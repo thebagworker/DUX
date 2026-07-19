@@ -75,7 +75,7 @@ export default function FeedTable({ profiles, markets, briefs, fresh }: FeedTabl
                             </span>
                           )}
                           {fresh.has(p.tokenAddress) && (
-                            <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide text-white">
+                            <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide text-bg">
                               UPDATED
                             </span>
                           )}

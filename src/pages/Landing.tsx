@@ -43,7 +43,7 @@ export default function Landing() {
         />
         <button
           onClick={go}
-          className="rounded-xl bg-accent px-6 py-3.5 font-bold text-white transition hover:bg-accent-dark"
+          className="rounded-xl bg-accent px-6 py-3.5 font-bold text-bg transition hover:bg-accent-dark"
         >
           Open token
         </button>
@@ -69,7 +69,7 @@ export default function Landing() {
           },
         ].map((s) => (
           <div key={s.n} className="rounded-xl border border-line bg-card p-5">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-sm font-bold text-bg">
               {s.n}
             </span>
             <h3 className="mb-1.5 mt-2.5 font-semibold">{s.t}</h3>

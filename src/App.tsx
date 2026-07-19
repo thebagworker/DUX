@@ -1,4 +1,6 @@
 import { Routes, Route, Link, Outlet } from "react-router-dom";
+import { ThemeProvider } from "./lib/theme";
+import ThemeToggle from "./components/ThemeToggle";
 import WalletProviders from "./components/WalletProviders";
 import GlobalSearch from "./components/GlobalSearch";
 import Landing from "./pages/Landing";
@@ -40,6 +42,7 @@ function SiteChrome() {
             >
               GitHub
             </a>
+            <ThemeToggle />
           </nav>
         </div>
       </header>
@@ -63,19 +66,21 @@ function SiteChrome() {
 
 export default function App() {
   return (
-    <WalletProviders>
-      <Routes>
-        {/* Chrome-free chart for third-party <iframe> embeds. */}
-        <Route path="/embed/token/:address" element={<EmbedChart />} />
+    <ThemeProvider>
+      <WalletProviders>
+        <Routes>
+          {/* Chrome-free chart for third-party <iframe> embeds. */}
+          <Route path="/embed/token/:address" element={<EmbedChart />} />
 
-        {/* Everything else renders inside the full DUX site chrome. */}
-        <Route element={<SiteChrome />}>
-          <Route path="/" element={<Landing />} />
-          <Route path="/token/:address" element={<TokenPage />} />
-          <Route path="/feed" element={<Feed />} />
-          <Route path="/docs" element={<Docs />} />
-        </Route>
-      </Routes>
-    </WalletProviders>
+          {/* Everything else renders inside the full DUX site chrome. */}
+          <Route element={<SiteChrome />}>
+            <Route path="/" element={<Landing />} />
+            <Route path="/token/:address" element={<TokenPage />} />
+            <Route path="/feed" element={<Feed />} />
+            <Route path="/docs" element={<Docs />} />
+          </Route>
+        </Routes>
+      </WalletProviders>
+    </ThemeProvider>
   );
 }

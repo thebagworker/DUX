@@ -5,14 +5,15 @@ interface SkeletonProps {
 
 /**
  * A single shimmering placeholder block. Compose several of these to mock the
- * shape of the content that is still loading. Colors track the light theme so
- * the sweep stays subtle rather than flashy.
+ * shape of the content that is still loading. Colors track the active theme
+ * (see `.skeleton-shimmer` in index.css) so the sweep stays subtle rather than
+ * flashy in both light and dark mode.
  */
 export function Skeleton({ className = "" }: SkeletonProps) {
   return (
     <span
       aria-hidden="true"
-      className={`block animate-shimmer rounded bg-[linear-gradient(90deg,#ececf0_8%,#f6f7f8_18%,#ececf0_33%)] bg-[length:200%_100%] ${className}`}
+      className={`skeleton-shimmer block animate-shimmer rounded ${className}`}
     />
   );
 }
