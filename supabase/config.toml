@@ -1,10 +1,1 @@
 project_id = "pwvvexyylkjnujkcjrpu"
-
-[functions.auth]
-import_map = "functions/import_map.json"
-
-[functions.profile]
-import_map = "functions/import_map.json"
-
-[functions.token-profiles]
-import_map = "functions/import_map.json"
