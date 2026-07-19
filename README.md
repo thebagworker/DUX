@@ -1,6 +1,6 @@
 # DUX
 
-Free, open-source **Enhanced Token Info** for Solana tokens. Token teams and major holders can publish a banner, description and verified links for their token, authorized purely on-chain, at no cost. The data is served through an open, Dexscreener-compatible API that any trading platform can integrate. The token icon is intentionally not part of this data (every platform already has it from on-chain metadata); the `icon` field exists only for schema compatibility and is always `null`.
+Free, open-source **Enhanced Token Info** for Solana tokens. Token teams and major holders can publish a banner, description and verified links for their token, authorized purely on-chain, at no cost. The data is served through an open, Dexscreener-compatible API that any trading platform can integrate.
 
 - **Frontend:** Vite + React + TypeScript + Tailwind
 - **Backend:** Supabase Edge Functions (Deno) + Postgres. No dedicated server needed.
@@ -23,7 +23,7 @@ Integrators (trading platforms): see [`INTEGRATION.md`](./INTEGRATION.md).
 
 Base URL: `https://<project-ref>.supabase.co/functions/v1`. CORS `*`, no API key, no auth.
 
-A terminal (Axiom / Padre / GMGN-style) needs exactly two endpoints:
+A terminal (Axiom / Padre / GMGN) needs exactly two endpoints:
 
 1. When rendering a token page, fetch `GET /token-profiles/solana/{tokenAddress}` and render `header` (banner), `description` and `links` next to your existing token info. `icon` is always `null` (schema compatibility only) — keep your own token-icon source. 404 means no profile, show your default layout.
 
