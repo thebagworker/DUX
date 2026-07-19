@@ -1,13 +1,3 @@
-/**
- * Minimal, dependency-free wallet integration (Phantom + Solflare).
- *
- * Deliberately does NOT use @solana/wallet-adapter UI/react:
- * - no auto-detection of every installed wallet (a known source of
- *   render loops with some extensions)
- * - no autoConnect, no persisted selection: after a reload the user is
- *   disconnected and the picker always opens fresh
- * - account switches inside Phantom/Solflare are picked up live
- */
 import {
   createContext,
   useCallback,
@@ -21,7 +11,7 @@ import {
 
 type InjectedProvider = {
   publicKey?: { toBase58(): string } | null;
-  connect(opts?: { onlyIfTrusted?: boolean }): Promise<unknown>;
+  connect(): Promise<unknown>;
   disconnect(): Promise<void>;
   signMessage(message: Uint8Array, encoding?: string): Promise<unknown>;
   on?(event: string, handler: (...args: unknown[]) => void): void;
@@ -44,7 +34,7 @@ function getProvider(name: WalletName): InjectedProvider | undefined {
 
 interface WalletState {
   address: string | null;
-  walletName: WalletName | null;
+  selectedWallet: WalletName | null;
   connected: boolean;
   connecting: boolean;
   openPicker: () => void;
@@ -69,7 +59,7 @@ function extractAddress(res: unknown, provider: InjectedProvider): string | null
 
 export default function WalletProviders({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
-  const [walletName, setWalletName] = useState<WalletName | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<WalletName | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const providerRef = useRef<InjectedProvider | null>(null);
@@ -79,7 +69,7 @@ export default function WalletProviders({ children }: { children: ReactNode }) {
   const attachListeners = useCallback((provider: InjectedProvider) => {
     const onDisconnect = () => {
       setAddress(null);
-      setWalletName(null);
+      setSelectedWallet(null);
       providerRef.current = null;
     };
     const onAccountChanged = (...args: unknown[]) => {
@@ -121,7 +111,7 @@ export default function WalletProviders({ children }: { children: ReactNode }) {
           cleanupListeners.current?.();
           providerRef.current = provider;
           setAddress(addr);
-          setWalletName(name);
+          setSelectedWallet(name);
           attachListeners(provider);
           setPickerOpen(false);
         }
@@ -140,7 +130,7 @@ export default function WalletProviders({ children }: { children: ReactNode }) {
     cleanupListeners.current = null;
     providerRef.current = null;
     setAddress(null);
-    setWalletName(null);
+    setSelectedWallet(null);
     try {
       await provider?.disconnect();
     } catch {
@@ -161,14 +151,14 @@ export default function WalletProviders({ children }: { children: ReactNode }) {
   const value = useMemo<WalletState>(
     () => ({
       address,
-      walletName,
+      selectedWallet,
       connected: address !== null,
       connecting,
       openPicker: () => setPickerOpen(true),
       disconnect,
       signMessage,
     }),
-    [address, walletName, connecting, disconnect, signMessage]
+    [address, selectedWallet, connecting, disconnect, signMessage]
   );
 
   return (
