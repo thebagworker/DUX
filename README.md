@@ -11,7 +11,7 @@ Free, open-source **Enhanced Token Info** for Solana tokens. Token teams and maj
 Deployment: see [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 Integrators (trading platforms): see [`INTEGRATION.md`](./INTEGRATION.md).
 
-## How it works
+## How it works:
 
 1. A user enters a token mint address and connects their wallet.
 2. The server issues a single-use nonce; the wallet signs a plain message (SIWS-style, never a transaction).
