@@ -6,7 +6,6 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 export default defineConfig({
   plugins: [
     react(),
-    // Buffer/process polyfills required by @solana/web3.js + wallet adapters
     nodePolyfills({ globals: { Buffer: true, process: true } }),
   ],
   server: { port: 5173 },
