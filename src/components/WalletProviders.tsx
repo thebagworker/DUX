@@ -16,11 +16,15 @@ function WalletSelectionReset() {
     const adapter = wallet?.adapter;
     if (!adapter) return;
     const onDisconnect = () => {
-      select(null);
+      try {
+        select(null);
+      } catch {
+        /* ignore */
+      }
       try {
         localStorage.removeItem("walletName");
       } catch {
-        /* storage unavailable, selection reset above is enough */
+        /* ignore */
       }
     };
     adapter.on("disconnect", onDisconnect);
@@ -37,7 +41,13 @@ export default function WalletProviders({ children }: { children: ReactNode }) {
   return (
     <ConnectionProvider endpoint={BROWSER_RPC}>
       {/* no autoConnect: the site never reconnects silently on page load */}
-      <WalletProvider wallets={wallets}>
+      <WalletProvider
+        wallets={wallets}
+        onError={(e) => {
+          // never let a wallet error crash the app
+          console.warn("wallet error:", e?.message ?? e);
+        }}
+      >
         <WalletModalProvider>
           <WalletSelectionReset />
           {children}
