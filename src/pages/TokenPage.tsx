@@ -209,14 +209,24 @@ export default function TokenPage() {
             </p>
             <div className="flex flex-wrap gap-2">
               {websiteUrl.trim() && (
-                <span className="rounded-full border border-line bg-bg-soft px-2.5 py-0.5 text-xs text-ink-dim">
+                <a
+                  href={websiteUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-line bg-bg-soft px-2.5 py-0.5 text-xs text-ink-dim transition hover:border-accent hover:text-accent"
+                >
                   website
-                </span>
+                </a>
               )}
               {twitterUrl.trim() && (
-                <span className="rounded-full border border-line bg-bg-soft px-2.5 py-0.5 text-xs text-ink-dim">
+                <a
+                  href={twitterUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-line bg-bg-soft px-2.5 py-0.5 text-xs text-ink-dim transition hover:border-accent hover:text-accent"
+                >
                   X
-                </span>
+                </a>
               )}
             </div>
           </div>
