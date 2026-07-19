@@ -1,13 +1,31 @@
 import { Routes, Route, Link, Outlet } from "react-router-dom";
 import { ThemeProvider } from "./lib/theme";
+import { WatchlistProvider, useWatchlist } from "./lib/watchlist";
 import ThemeToggle from "./components/ThemeToggle";
+import ToastHost from "./components/ToastHost";
 import WalletProviders from "./components/WalletProviders";
 import GlobalSearch from "./components/GlobalSearch";
 import Landing from "./pages/Landing";
 import TokenPage from "./pages/TokenPage";
 import Feed from "./pages/Feed";
 import Docs from "./pages/Docs";
+import Watchlist from "./pages/Watchlist";
 import EmbedChart from "./pages/EmbedChart";
+
+/** Header link to the watchlist, badged with the number of watched tokens. */
+function WatchlistNavLink() {
+  const { watchedCount } = useWatchlist();
+  return (
+    <Link to="/watchlist" className="inline-flex items-center gap-1.5 hover:text-ink">
+      Watchlist
+      {watchedCount > 0 && (
+        <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-brand-soft px-1.5 text-[11px] font-bold text-brand">
+          {watchedCount}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 /** Full DUX site chrome (notice + header + footer) shared by every normal page. */
 function SiteChrome() {
@@ -31,6 +49,7 @@ function SiteChrome() {
             <Link to="/feed" className="hidden hover:text-ink sm:inline">
               Live Feed
             </Link>
+            <WatchlistNavLink />
             <Link to="/docs" className="hidden hover:text-ink sm:inline">
               API Docs
             </Link>
@@ -67,20 +86,24 @@ function SiteChrome() {
 export default function App() {
   return (
     <ThemeProvider>
-      <WalletProviders>
-        <Routes>
-          {/* Chrome-free chart for third-party <iframe> embeds. */}
-          <Route path="/embed/token/:address" element={<EmbedChart />} />
+      <WatchlistProvider>
+        <WalletProviders>
+          <Routes>
+            {/* Chrome-free chart for third-party <iframe> embeds. */}
+            <Route path="/embed/token/:address" element={<EmbedChart />} />
 
-          {/* Everything else renders inside the full DUX site chrome. */}
-          <Route element={<SiteChrome />}>
-            <Route path="/" element={<Landing />} />
-            <Route path="/token/:address" element={<TokenPage />} />
-            <Route path="/feed" element={<Feed />} />
-            <Route path="/docs" element={<Docs />} />
-          </Route>
-        </Routes>
-      </WalletProviders>
+            {/* Everything else renders inside the full DUX site chrome. */}
+            <Route element={<SiteChrome />}>
+              <Route path="/" element={<Landing />} />
+              <Route path="/token/:address" element={<TokenPage />} />
+              <Route path="/feed" element={<Feed />} />
+              <Route path="/watchlist" element={<Watchlist />} />
+              <Route path="/docs" element={<Docs />} />
+            </Route>
+          </Routes>
+          <ToastHost />
+        </WalletProviders>
+      </WatchlistProvider>
     </ThemeProvider>
   );
 }

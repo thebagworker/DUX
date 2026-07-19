@@ -170,6 +170,99 @@ export async function fetchMarketPairs(
   return marketByAddress;
 }
 
+/**
+ * Build a best-effort MarketPair from Jupiter token data for tokens that
+ * Dexscreener has not indexed yet (typically pump.fun tokens still on the
+ * bonding curve). Jupiter exposes live price, market cap, liquidity and per-
+ * window price changes, which is everything the watchlist and price alerts
+ * need. Fields that only make sense for a concrete DEX pair (pairAddress,
+ * trades, per-window volume) are left empty/zeroed.
+ */
+async function fetchJupiterMarkets(
+  addresses: string[]
+): Promise<Record<string, MarketPair | null>> {
+  const unique = [...new Set(addresses)];
+  const marketByAddress: Record<string, MarketPair | null> = {};
+  for (const address of unique) marketByAddress[address] = null;
+  if (unique.length === 0) return marketByAddress;
+
+  const batches: string[][] = [];
+  for (let i = 0; i < unique.length; i += 30) batches.push(unique.slice(i, i + 30));
+
+  await Promise.all(
+    batches.map(async (batch) => {
+      try {
+        const res = await fetch(`${JUPITER_TOKEN_BASE}/search?query=${batch.join(",")}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const rows: any[] = await res.json();
+        if (!Array.isArray(rows)) return;
+
+        for (const row of rows) {
+          const address = row?.id as string | undefined;
+          if (!address || !batch.includes(address)) continue;
+          const priceUsd = toNumber(row.usdPrice);
+          if (priceUsd <= 0) continue;
+          marketByAddress[address] = {
+            pairAddress: "",
+            dexId: "jupiter",
+            url: "",
+            baseSymbol: row.symbol ?? "TOKEN",
+            baseName: row.name ?? "Unknown token",
+            quoteSymbol: "SOL",
+            imageUrl: typeof row.icon === "string" && row.icon ? row.icon : null,
+            priceUsd,
+            priceNative: 0,
+            priceChange: {
+              m5: toNumber(row.stats5m?.priceChange),
+              h1: toNumber(row.stats1h?.priceChange),
+              h6: toNumber(row.stats6h?.priceChange),
+              h24: toNumber(row.stats24h?.priceChange),
+            },
+            txns: {
+              m5: { buys: 0, sells: 0 },
+              h1: { buys: 0, sells: 0 },
+              h6: { buys: 0, sells: 0 },
+              h24: { buys: 0, sells: 0 },
+            },
+            volume: { m5: 0, h1: 0, h6: 0, h24: 0 },
+            liquidityUsd: toNumber(row.liquidity),
+            fdv: toNumber(row.fdv),
+            marketCap: toNumber(row.mcap),
+            pairCreatedAt: null,
+          };
+        }
+      } catch {
+        /* transient error — these tokens simply stay null */
+      }
+    })
+  );
+
+  return marketByAddress;
+}
+
+/**
+ * Like {@link fetchMarketPairs}, but falls back to Jupiter for any token
+ * Dexscreener has no pair for. Use this where a token may not be listed on a
+ * DEX yet (e.g. the watchlist and price-alert monitor) so those tokens still
+ * show a live price and market cap.
+ */
+export async function fetchMarketPairsResilient(
+  addresses: string[]
+): Promise<Record<string, MarketPair | null>> {
+  const dexMarkets = await fetchMarketPairs(addresses);
+  const missing = Object.keys(dexMarkets).filter((address) => dexMarkets[address] == null);
+  if (missing.length === 0) return dexMarkets;
+
+  const jupiterMarkets = await fetchJupiterMarkets(missing);
+  const merged = { ...dexMarkets };
+  for (const [address, pair] of Object.entries(jupiterMarkets)) {
+    if (pair) merged[address] = pair;
+  }
+  return merged;
+}
+
 /** A single token surfaced by the platform-wide command-palette search. */
 export interface TokenSearchResult {
   address: string;
@@ -441,6 +534,52 @@ export function formatCompact(value: number): string {
   if (abs >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
   if (abs >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
   return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+/** A shorthand magnitude suffix used by the compact number helpers. */
+export type CompactUnit = "" | "K" | "M" | "B";
+
+/** How much a compact unit suffix multiplies its base number by. */
+export function compactUnitMultiplier(unit: CompactUnit): number {
+  switch (unit) {
+    case "K":
+      return 1e3;
+    case "M":
+      return 1e6;
+    case "B":
+      return 1e9;
+    default:
+      return 1;
+  }
+}
+
+/**
+ * Parse human shorthand for large numbers into a plain number.
+ * Accepts things like "693.22m", "1.5B", "12k", "1,234,567" and "500000".
+ * Returns NaN when the text is empty or unparseable.
+ */
+export function parseCompactNumber(text: string): number {
+  const cleaned = text.trim().replace(/[$,\s]/g, "");
+  if (!cleaned) return Number.NaN;
+  const match = cleaned.match(/^(-?\d*\.?\d+)([kmb])?$/i);
+  if (!match) return Number.NaN;
+  const base = Number.parseFloat(match[1]);
+  const unit = (match[2]?.toUpperCase() ?? "") as CompactUnit;
+  return base * compactUnitMultiplier(unit);
+}
+
+/**
+ * Split a number into a compact mantissa + unit for editing, e.g.
+ * 693_220_000 → { mantissa: "693.22", unit: "M" }. Trailing zeros are trimmed
+ * so the value round-trips as cleanly as possible in an input field.
+ */
+export function splitCompact(value: number): { mantissa: string; unit: CompactUnit } {
+  if (!Number.isFinite(value) || value <= 0) return { mantissa: "", unit: "" };
+  const abs = Math.abs(value);
+  const unit: CompactUnit = abs >= 1e9 ? "B" : abs >= 1e6 ? "M" : abs >= 1e3 ? "K" : "";
+  const mantissa = value / compactUnitMultiplier(unit);
+  const rounded = Number(mantissa.toFixed(2)).toString();
+  return { mantissa: rounded, unit };
 }
 
 /** Signed percentage: 12.34 → "+12.34%". */

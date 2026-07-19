@@ -11,12 +11,17 @@ import EmbedChartDialog from "../components/token/EmbedChartDialog";
 import StatsPanel from "../components/token/StatsPanel";
 import TransactionsTable from "../components/token/TransactionsTable";
 import { Skeleton, Spinner } from "../components/ui/Skeleton";
+import WatchButton from "../components/WatchButton";
+import AlertForm from "../components/watchlist/AlertForm";
+import AlertList from "../components/watchlist/AlertList";
+import { useWatchlist } from "../lib/watchlist";
 
 const MARKET_REFRESH_MS = 20000;
 
 export default function TokenPage() {
   const { address = "" } = useParams();
   const { address: walletAddress, signMessage, connected } = useWallet();
+  const { alertsForToken } = useWatchlist();
 
   const [profile, setProfile] = useState<TokenProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -216,7 +221,10 @@ export default function TokenPage() {
         <Link to="/" className="text-sm text-ink-dim transition hover:text-ink">
           ← Back
         </Link>
-        <WalletButton />
+        <div className="flex items-center gap-2.5">
+          <WatchButton address={address} />
+          <WalletButton />
+        </div>
       </div>
 
       {/* identity + live price (banner overlaid when present) */}
@@ -316,6 +324,24 @@ export default function TokenPage() {
                 )}
               </div>
             </div>
+          </section>
+
+          {/* Watchlist price alerts for this token (stored locally). */}
+          <section className="rounded-2xl border border-line bg-card p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="font-semibold">Price alerts</h3>
+              <WatchButton address={address} compact className="ml-auto" />
+            </div>
+            <AlertForm
+              address={address}
+              currentPrice={pair?.priceUsd ?? null}
+              currentMarketCap={pair?.marketCap ?? null}
+            />
+            {alertsForToken(address).length > 0 && (
+              <div className="mt-4">
+                <AlertList alerts={alertsForToken(address)} />
+              </div>
+            )}
           </section>
 
           {loading && (

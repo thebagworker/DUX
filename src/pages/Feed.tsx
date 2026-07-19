@@ -2,17 +2,39 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { API_BASE } from "../lib/config";
 import { relTime, type TokenProfile } from "../lib/types";
 import { fetchMarketPairs, fetchTokenBriefs, type MarketPair, type TokenBrief } from "../lib/market";
-import FeedToolbar, { type FeedViewMode } from "../components/feed/FeedToolbar";
-import FeedCard from "../components/feed/FeedCard";
-import FeedTable from "../components/feed/FeedTable";
+import FeedToolbar from "../components/feed/FeedToolbar";
 import FeedSkeleton from "../components/feed/FeedSkeleton";
+import TokenCard from "../components/token/TokenCard";
+import TokenList from "../components/token/TokenList";
+import { type TokenViewMode } from "../components/token/TokenViewToggle";
+import { type TokenViewItem } from "../components/token/tokenView";
 
 const POLL_MS = 5000;
 const VIEW_STORAGE_KEY = "dux.feed.view";
 
-function loadViewMode(): FeedViewMode {
+function loadViewMode(): TokenViewMode {
   if (typeof window === "undefined") return "cards";
   return window.localStorage.getItem(VIEW_STORAGE_KEY) === "table" ? "table" : "cards";
+}
+
+/** Normalize a profile + its live data into the shared token-view shape. */
+function toTokenViewItem(
+  profile: TokenProfile,
+  market: MarketPair | null | undefined,
+  brief: TokenBrief | undefined,
+  isFresh: boolean
+): TokenViewItem {
+  return {
+    address: profile.tokenAddress,
+    market,
+    brief,
+    headerImageUrl: profile.header,
+    iconFallback: profile.icon,
+    description: profile.description,
+    list_of_links: profile.links,
+    updatedAt: profile.updatedAt,
+    isFresh,
+  };
 }
 
 /** Does a profile match the search query across name, symbol, address, etc.? */
@@ -43,7 +65,7 @@ export default function Feed() {
   const [markets, setMarkets] = useState<Record<string, MarketPair | null>>({});
   const [briefs, setBriefs] = useState<Record<string, TokenBrief>>({});
   const [query, setQuery] = useState("");
-  const [viewMode, setViewMode] = useState<FeedViewMode>(loadViewMode);
+  const [viewMode, setViewMode] = useState<TokenViewMode>(loadViewMode);
   const known = useRef<Map<string, string>>(new Map());
   const first = useRef(true);
   const fetchedMarkets = useRef<Set<string>>(new Set());
@@ -196,17 +218,30 @@ export default function Feed() {
       ) : viewMode === "cards" ? (
         <div className="mt-5 grid animate-fade-in gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => (
-            <FeedCard
+            <TokenCard
               key={p.tokenAddress}
-              profile={p}
-              market={markets[p.tokenAddress]}
-              brief={briefs[p.tokenAddress]}
-              isFresh={fresh.has(p.tokenAddress)}
+              item={toTokenViewItem(
+                p,
+                markets[p.tokenAddress],
+                briefs[p.tokenAddress],
+                fresh.has(p.tokenAddress)
+              )}
             />
           ))}
         </div>
       ) : (
-        <FeedTable profiles={filtered} markets={markets} briefs={briefs} fresh={fresh} />
+        <TokenList
+          list_of_items={filtered.map((p) =>
+            toTokenViewItem(
+              p,
+              markets[p.tokenAddress],
+              briefs[p.tokenAddress],
+              fresh.has(p.tokenAddress)
+            )
+          )}
+          showProfileColumns
+          showUpdatedColumn
+        />
       )}
     </div>
   );

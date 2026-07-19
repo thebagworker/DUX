@@ -1,5 +1,5 @@
 import { Skeleton } from "../ui/Skeleton";
-import type { FeedViewMode } from "./FeedToolbar";
+import type { TokenViewMode } from "../token/TokenViewToggle";
 
 /** Placeholder card that mirrors FeedCard's layout while data loads. */
 function CardSkeleton() {
@@ -64,7 +64,7 @@ function RowSkeleton() {
 }
 
 /** Full loading state for the live feed, matching the active view mode. */
-export default function FeedSkeleton({ viewMode }: { viewMode: FeedViewMode }) {
+export default function FeedSkeleton({ viewMode }: { viewMode: TokenViewMode }) {
   if (viewMode === "table") {
     return (
       <div className="mt-5 overflow-hidden rounded-2xl border border-line bg-card">
