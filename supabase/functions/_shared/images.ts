@@ -7,6 +7,7 @@
  *  - strips ALL metadata (EXIF, polyglot payloads),
  *  - normalizes to fixed output dimensions.
  */
+import { Buffer } from "node:buffer";
 import * as jpeg from "jpeg-js";
 import UPNGmod from "upng-js";
 
