@@ -1,5 +1,6 @@
 import { Routes, Route, Link, Outlet } from "react-router-dom";
 import WalletProviders from "./components/WalletProviders";
+import GlobalSearch from "./components/GlobalSearch";
 import Landing from "./pages/Landing";
 import TokenPage from "./pages/TokenPage";
 import Feed from "./pages/Feed";
@@ -16,16 +17,19 @@ function SiteChrome() {
         with, endorsed by, or connected to DEX Screener, Inc. in any way.
       </div>
       <header className="border-b border-line">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-4">
-          <Link to="/" className="flex items-center gap-2 text-lg font-bold">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-5 py-4">
+          <Link to="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
             <img src="/logo.png" alt="DUX logo" className="h-8 w-8" />
             DUX
           </Link>
-          <nav className="flex gap-5 text-sm text-ink-dim">
-            <Link to="/feed" className="hover:text-ink">
+          <div className="flex flex-1 justify-center">
+            <GlobalSearch />
+          </div>
+          <nav className="flex shrink-0 items-center gap-5 text-sm text-ink-dim">
+            <Link to="/feed" className="hidden hover:text-ink sm:inline">
               Live Feed
             </Link>
-            <Link to="/docs" className="hover:text-ink">
+            <Link to="/docs" className="hidden hover:text-ink sm:inline">
               API Docs
             </Link>
             <a

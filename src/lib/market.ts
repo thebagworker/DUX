@@ -170,6 +170,69 @@ export async function fetchMarketPairs(
   return marketByAddress;
 }
 
+/** A single token surfaced by the platform-wide command-palette search. */
+export interface TokenSearchResult {
+  address: string;
+  name: string;
+  symbol: string;
+  imageUrl: string | null;
+  priceUsd: number;
+  priceChange24h: number;
+  liquidityUsd: number;
+  marketCap: number;
+}
+
+/**
+ * Search Solana tokens by name, symbol or address for the global command
+ * palette. Backed by Dexscreener's public, key-less `/search` endpoint, which
+ * matches against token identity and returns matching pairs.
+ *
+ * A token can trade in many pairs, so we collapse every returned pair down to
+ * one row per base-token address, keeping the deepest (most liquid) pair as the
+ * canonical price/identity for that token, then rank the tokens by liquidity so
+ * the most relevant, tradeable results float to the top.
+ */
+export async function searchTokens(query: string): Promise<TokenSearchResult[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+
+  let body: any;
+  try {
+    const res = await fetch(`${DEXSCREENER_BASE}/search?q=${encodeURIComponent(trimmed)}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    body = await res.json();
+  } catch {
+    return [];
+  }
+
+  const pairs: any[] = Array.isArray(body?.pairs) ? body.pairs : [];
+  const bestByAddress = new Map<string, any>();
+  for (const pair of pairs) {
+    if (pair?.chainId !== NETWORK) continue;
+    const address = pair?.baseToken?.address as string | undefined;
+    if (!address) continue;
+    const current = bestByAddress.get(address);
+    if (!current || toNumber(pair?.liquidity?.usd) > toNumber(current?.liquidity?.usd)) {
+      bestByAddress.set(address, pair);
+    }
+  }
+
+  return [...bestByAddress.values()]
+    .map((pair) => ({
+      address: pair.baseToken.address as string,
+      name: pair.baseToken?.name ?? "",
+      symbol: pair.baseToken?.symbol ?? "",
+      imageUrl: pair.info?.imageUrl ?? null,
+      priceUsd: toNumber(pair.priceUsd),
+      priceChange24h: toNumber(pair.priceChange?.h24),
+      liquidityUsd: toNumber(pair.liquidity?.usd),
+      marketCap: toNumber(pair.marketCap),
+    }))
+    .sort((a, b) => b.liquidityUsd - a.liquidityUsd);
+}
+
 export interface TokenBrief {
   name: string;
   symbol: string;
