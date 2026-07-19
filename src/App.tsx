@@ -16,7 +16,7 @@ export default function App() {
         </div>
         <header className="mb-8 flex items-center justify-between border-b border-line py-4">
           <Link to="/" className="flex items-center gap-2 text-lg font-bold">
-            <img src="/logo.svg" alt="DUX logo" className="h-8 w-8" />
+            <img src="/logo.png" alt="DUX logo" className="h-8 w-8" />
             DUX
           </Link>
           <nav className="flex gap-5 text-sm text-ink-dim">
