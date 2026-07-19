@@ -1,15 +1,1 @@
-# Supabase project config, edge functions are public JSON APIs,
-# auth happens inside the functions (wallet signature -> JWT), so
-# the platform-level JWT check is disabled.
-
-[functions.auth]
-verify_jwt = false
-import_map = "./functions/import_map.json"
-
-[functions.profile]
-verify_jwt = false
-import_map = "./functions/import_map.json"
-
-[functions.token-profiles]
-verify_jwt = false
-import_map = "./functions/import_map.json"
+project_id = "pwvvexyylkjnujkcjrpu"
