@@ -5,13 +5,30 @@ import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adap
 import { BROWSER_RPC } from "../lib/config";
 
 /**
- * After a disconnect, clear the persisted wallet selection so the next click
- * on the connect button always opens the wallet picker modal again instead of
- * silently reconnecting the previously selected wallet.
+ * Keeps wallet selection honest:
+ * - on page load, clear any stale persisted selection (no silent reconnects)
+ * - on disconnect, clear the selection again
+ * The connect button therefore always opens the wallet picker modal.
  */
 function WalletSelectionReset() {
-  const { wallet, select } = useWallet();
+  const { wallet, connected, select } = useWallet();
 
+  // on mount: drop stale selection left over from a previous visit
+  useEffect(() => {
+    try {
+      localStorage.removeItem("walletName");
+    } catch {
+      /* ignore */
+    }
+    try {
+      select(null);
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // on disconnect: drop the selection so the picker shows next time
   useEffect(() => {
     const adapter = wallet?.adapter;
     if (!adapter) return;
@@ -31,7 +48,7 @@ function WalletSelectionReset() {
     return () => {
       adapter.off("disconnect", onDisconnect);
     };
-  }, [wallet, select]);
+  }, [wallet, connected, select]);
 
   return null;
 }
@@ -44,7 +61,6 @@ export default function WalletProviders({ children }: { children: ReactNode }) {
       <WalletProvider
         wallets={wallets}
         onError={(e) => {
-          // never let a wallet error crash the app
           console.warn("wallet error:", e?.message ?? e);
         }}
       >
