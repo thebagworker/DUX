@@ -10,14 +10,14 @@ export default function App() {
     <WalletProviders>
       <div className="flex min-h-screen flex-col">
         {/* non-affiliation notice, keep visible on every page */}
-        <div className="border-b border-line bg-bg-soft px-6 py-1.5 text-left text-[11px] text-ink-dim">
+        <div className="border-b border-line bg-bg-soft px-5 py-1.5 text-left text-[11px] text-ink-dim">
           This is <strong>not</strong> Dexscreener. Independent open-source project, not
           affiliated with, endorsed by, or connected to DEX Screener, Inc. in any way.
         </div>
         <header className="border-b border-line">
-          <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-4">
             <Link to="/" className="flex items-center gap-2 text-lg font-bold">
-              <img src="/logo.svg" alt="DUX logo" className="h-8 w-8" />
+              <img src="/logo.png" alt="DUX logo" className="h-8 w-8" />
               DUX
             </Link>
             <nav className="flex gap-5 text-sm text-ink-dim">
@@ -38,7 +38,7 @@ export default function App() {
             </nav>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-6 pt-8">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-5 pt-8">
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/token/:address" element={<TokenPage />} />
@@ -47,7 +47,7 @@ export default function App() {
           </Routes>
         </main>
         <footer className="mt-12 border-t border-line">
-          <div className="mx-auto w-full max-w-7xl px-6 py-6 text-center text-[13px] text-ink-dim">
+          <div className="mx-auto w-full max-w-7xl px-5 py-6 text-center text-[13px] text-ink-dim">
             <p>Free &amp; open source. No fees, ever. Verification is fully on-chain.</p>
             <p className="mt-1.5 text-[11px]">
               DUX is an independent community project and is not affiliated with, endorsed by, or
