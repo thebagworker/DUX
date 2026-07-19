@@ -41,7 +41,7 @@ export default function TokenHeader({
   return (
     <div
       className={`relative flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-2xl border border-line p-4 ${
-        hasBanner ? "min-h-[160px]" : "bg-card"
+        hasBanner ? "aspect-[3/1] min-h-[160px] max-h-[200px]" : "bg-card"
       }`}
     >
       {hasBanner && (

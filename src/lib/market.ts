@@ -13,6 +13,7 @@
 
 const DEXSCREENER_BASE = "https://api.dexscreener.com/latest/dex";
 const GECKOTERMINAL_BASE = "https://api.geckoterminal.com/api/v2";
+const JUPITER_TOKEN_BASE = "https://lite-api.jup.ag/tokens/v2";
 const NETWORK = "solana";
 
 export interface TxnBuckets {
@@ -102,6 +103,122 @@ export async function fetchMarketPair(tokenAddress: string): Promise<MarketPair 
     marketCap: toNumber(best.marketCap),
     pairCreatedAt: best.pairCreatedAt ? Number(best.pairCreatedAt) : null,
   };
+}
+
+export interface TokenBrief {
+  name: string;
+  symbol: string;
+  imageUrl: string | null;
+}
+
+/**
+ * Fetch name / symbol / icon for many tokens in a single pass. Used by the
+ * "just added" marquee and the live feed so they can show real names and logos
+ * instead of raw addresses.
+ *
+ * Both sources are public, key-less and CORS-enabled (so they work directly
+ * from the browser):
+ *
+ *   - Jupiter token API → on-chain token metadata, including the logo (`icon`);
+ *     the widest, freshest coverage for Solana tokens (incl. pump.fun launches)
+ *   - Dexscreener       → most-liquid-pair name/symbol, used as a fallback
+ *
+ * Jupiter supplies the logo and identity; Dexscreener backfills any token
+ * Jupiter has not indexed yet.
+ */
+export async function fetchTokenBriefs(
+  addresses: string[]
+): Promise<Record<string, TokenBrief>> {
+  const unique = [...new Set(addresses)].slice(0, 30);
+  if (unique.length === 0) return {};
+
+  const [jupiterBriefs, dexBriefs] = await Promise.all([
+    fetchJupiterBriefs(unique),
+    fetchDexscreenerBriefs(unique),
+  ]);
+
+  const merged: Record<string, TokenBrief> = {};
+  for (const address of unique) {
+    const jup = jupiterBriefs[address];
+    const dex = dexBriefs[address];
+    if (!jup && !dex) continue;
+    merged[address] = {
+      name: jup?.name || dex?.name || "",
+      symbol: jup?.symbol || dex?.symbol || "",
+      // Prefer Jupiter's on-chain logo; fall back to a Dexscreener pair logo.
+      imageUrl: jup?.imageUrl ?? dex?.imageUrl ?? null,
+    };
+  }
+  return merged;
+}
+
+/** Token metadata (incl. logo) per token from Jupiter's token search API. */
+async function fetchJupiterBriefs(
+  addresses: string[]
+): Promise<Record<string, TokenBrief>> {
+  try {
+    const res = await fetch(`${JUPITER_TOKEN_BASE}/search?query=${addresses.join(",")}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return {};
+    const body = await res.json();
+    const rows: any[] = Array.isArray(body) ? body : [];
+
+    const briefsByAddress: Record<string, TokenBrief> = {};
+    for (const row of rows) {
+      const address = row?.id as string | undefined;
+      if (!address) continue;
+      briefsByAddress[address] = {
+        name: row.name ?? "",
+        symbol: row.symbol ?? "",
+        imageUrl: typeof row.icon === "string" && row.icon ? row.icon : null,
+      };
+    }
+    return briefsByAddress;
+  } catch {
+    return {};
+  }
+}
+
+/** Most-liquid-pair metadata per token from Dexscreener (one batch request). */
+async function fetchDexscreenerBriefs(
+  addresses: string[]
+): Promise<Record<string, TokenBrief>> {
+  try {
+    const res = await fetch(`${DEXSCREENER_BASE}/tokens/${addresses.join(",")}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return {};
+    const body = await res.json();
+    const pairs: any[] = Array.isArray(body?.pairs) ? body.pairs : [];
+
+    const bestByAddress: Record<string, { brief: TokenBrief; liquidity: number }> = {};
+    for (const pair of pairs) {
+      if (pair?.chainId !== NETWORK) continue;
+      const address = pair?.baseToken?.address as string | undefined;
+      if (!address) continue;
+      const liquidity = toNumber(pair?.liquidity?.usd);
+      const current = bestByAddress[address];
+      if (!current || liquidity > current.liquidity) {
+        bestByAddress[address] = {
+          liquidity,
+          brief: {
+            name: pair.baseToken?.name ?? "",
+            symbol: pair.baseToken?.symbol ?? "",
+            imageUrl: pair.info?.imageUrl ?? null,
+          },
+        };
+      }
+    }
+
+    const briefsByAddress: Record<string, TokenBrief> = {};
+    for (const [address, value] of Object.entries(bestByAddress)) {
+      briefsByAddress[address] = value.brief;
+    }
+    return briefsByAddress;
+  } catch {
+    return {};
+  }
 }
 
 /**

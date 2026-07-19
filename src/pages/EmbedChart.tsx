@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { fetchMarketPair, formatPercent, formatPriceUsd, type MarketPair } from "../lib/market";
 import { shortenAddress } from "../lib/types";
 import PriceChart, { type ChartTheme } from "../components/token/PriceChart";
+import { Spinner } from "../components/ui/Skeleton";
 
 const PRICE_REFRESH_MS = 20000;
 
@@ -91,8 +92,14 @@ export default function EmbedChart() {
               </span>
             </>
           ) : (
-            <span className="text-xs" style={{ color: palette.dim }}>
-              {loading ? "Loading…" : "No market"}
+            <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: palette.dim }}>
+              {loading ? (
+                <>
+                  <Spinner className="h-3 w-3" /> Loading…
+                </>
+              ) : (
+                "No market"
+              )}
             </span>
           )}
         </div>

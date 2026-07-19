@@ -5,9 +5,36 @@ import {
   relTimeShort,
   type Trade,
 } from "../../lib/market";
+import { Skeleton } from "../ui/Skeleton";
 
 function shortWallet(w: string): string {
   return w.length > 8 ? `${w.slice(0, 4)}…${w.slice(-4)}` : w || "—";
+}
+
+/** Placeholder rows shown while the first batch of trades is loading. */
+function TradeRowSkeleton() {
+  return (
+    <tr className="border-b border-line/60">
+      <td className="px-4 py-2.5">
+        <Skeleton className="h-3 w-14 rounded-full" />
+      </td>
+      <td className="px-4 py-2.5">
+        <Skeleton className="h-3 w-8 rounded-full" />
+      </td>
+      <td className="px-4 py-2.5">
+        <Skeleton className="ml-auto h-3 w-16 rounded-full" />
+      </td>
+      <td className="hidden px-4 py-2.5 sm:table-cell">
+        <Skeleton className="ml-auto h-3 w-14 rounded-full" />
+      </td>
+      <td className="hidden px-4 py-2.5 md:table-cell">
+        <Skeleton className="ml-auto h-3 w-16 rounded-full" />
+      </td>
+      <td className="px-4 py-2.5">
+        <Skeleton className="ml-auto h-3 w-16 rounded-full" />
+      </td>
+    </tr>
+  );
 }
 
 /** Recent on-chain trades for the pool. */
@@ -42,6 +69,9 @@ export default function TransactionsTable({
             </tr>
           </thead>
           <tbody>
+            {loading &&
+              trades.length === 0 &&
+              Array.from({ length: 8 }).map((_, i) => <TradeRowSkeleton key={i} />)}
             {trades.map((t) => (
               <tr
                 key={t.id}
@@ -85,9 +115,9 @@ export default function TransactionsTable({
           </tbody>
         </table>
 
-        {trades.length === 0 && (
+        {!loading && trades.length === 0 && (
           <p className="px-4 py-8 text-center text-sm text-ink-dim">
-            {loading ? "Loading transactions…" : "No recent transactions found."}
+            No recent transactions found.
           </p>
         )}
       </div>

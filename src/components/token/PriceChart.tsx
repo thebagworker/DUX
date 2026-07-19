@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Spinner } from "../ui/Skeleton";
 
 export type ChartTheme = "dark" | "light";
 
@@ -56,8 +57,8 @@ export default function PriceChart({
             className="absolute inset-0 h-full w-full border-0"
           />
           {!loaded && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-card text-sm text-ink-dim">
-              Loading live chart…
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-card text-ink-dim">
+              <Spinner className="h-6 w-6" label="Loading live chart…" />
             </div>
           )}
         </>

@@ -37,11 +37,21 @@ export default {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
         },
+        shimmer: {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateY(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         flash: "flash-border 4s ease-out",
         "pulse-dot": "pulse-dot 1.6s ease-in-out infinite",
         marquee: "marquee 40s linear infinite",
+        shimmer: "shimmer 1.8s ease-in-out infinite",
+        "fade-in": "fade-in 0.35s ease-out both",
       },
     },
   },

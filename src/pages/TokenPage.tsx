@@ -10,6 +10,7 @@ import PriceChart from "../components/token/PriceChart";
 import EmbedChartDialog from "../components/token/EmbedChartDialog";
 import StatsPanel from "../components/token/StatsPanel";
 import TransactionsTable from "../components/token/TransactionsTable";
+import { Skeleton, Spinner } from "../components/ui/Skeleton";
 
 const MARKET_REFRESH_MS = 20000;
 
@@ -230,6 +231,18 @@ export default function TokenPage() {
           change24h={pair.priceChange.h24}
           dexId={pair.dexId}
         />
+      ) : marketLoading ? (
+        <div className="flex items-center gap-3.5 rounded-2xl border border-line bg-card p-4">
+          <Skeleton className="h-14 w-14 shrink-0 rounded-2xl" />
+          <div className="flex-1">
+            <Skeleton className="h-5 w-40 rounded-full" />
+            <Skeleton className="mt-2 h-3.5 w-24 rounded-full" />
+          </div>
+          <div className="hidden text-right sm:block">
+            <Skeleton className="ml-auto h-6 w-28 rounded-full" />
+            <Skeleton className="ml-auto mt-2 h-3.5 w-16 rounded-full" />
+          </div>
+        </div>
       ) : (
         <div className="flex items-center gap-3.5 rounded-2xl border border-line bg-card p-4">
           <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-2xl border border-line bg-bg-soft">
@@ -241,9 +254,7 @@ export default function TokenPage() {
           </div>
           <div>
             <h1 className="font-mono text-lg font-semibold">{shortenAddress(address)}</h1>
-            <p className="text-sm text-ink-dim">
-              {marketLoading ? "Loading market data…" : "No live market found for this token yet."}
-            </p>
+            <p className="text-sm text-ink-dim">No live market found for this token yet.</p>
           </div>
         </div>
       )}
@@ -307,7 +318,11 @@ export default function TokenPage() {
             </div>
           </section>
 
-          {loading && <p className="text-sm text-ink-dim">Loading profile…</p>}
+          {loading && (
+            <span className="text-ink-dim">
+              <Spinner className="h-4 w-4" label="Loading profile…" />
+            </span>
+          )}
 
           {!editToken && (
             <section className="rounded-2xl border border-line bg-card p-4">
@@ -322,11 +337,13 @@ export default function TokenPage() {
                 disabled={!connected || verifying}
                 className="w-full rounded-xl bg-brand px-6 py-3 font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {verifying
-                  ? "Checking on-chain…"
-                  : connected
-                    ? "Verify with wallet"
-                    : "Connect wallet first"}
+                {verifying ? (
+                  <Spinner className="h-4 w-4" label="Checking on-chain…" />
+                ) : connected ? (
+                  "Verify with wallet"
+                ) : (
+                  "Connect wallet first"
+                )}
               </button>
             </section>
           )}
@@ -390,7 +407,7 @@ export default function TokenPage() {
                 disabled={saving}
                 className="w-full rounded-xl bg-brand px-6 py-3 font-bold text-white transition hover:brightness-110 disabled:opacity-50"
               >
-                {saving ? "Saving…" : "Save"}
+                {saving ? <Spinner className="h-4 w-4" label="Saving…" /> : "Save"}
               </button>
             </section>
           )}
