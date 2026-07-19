@@ -1,0 +1,12 @@
+{
+  "imports": {
+    "tweetnacl": "npm:tweetnacl@^1.0.3",
+    "bs58": "npm:bs58@^6.0.0",
+    "zod": "npm:zod@^3.23.0",
+    "jose": "npm:jose@^6.0.0",
+    "postgres": "npm:postgres@^3.4.0",
+    "@solana/web3.js": "npm:@solana/web3.js@^1.98.0",
+    "jpeg-js": "npm:jpeg-js@^0.4.4",
+    "pngjs": "npm:pngjs@^7.0.0"
+  }
+}
