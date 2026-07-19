@@ -8,8 +8,6 @@ export interface TokenProfile {
   url: string;
   chainId: string;
   tokenAddress: string;
-  name: string | null;
-  symbol: string | null;
   icon: string | null;
   header: string | null;
   description: string | null;

@@ -6,20 +6,9 @@ import { corsPreflight, json, normalizedPath, CORS_HEADERS } from "../_shared/ht
 const CACHE = { "Cache-Control": "public, max-age=15, s-maxage=15" };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// Profile columns plus cached name/symbol/image from token_metadata.
-const PROFILE_SELECT = `
-  SELECT tp.*,
-         tm.name AS meta_name,
-         tm.symbol AS meta_symbol,
-         tm.image_url AS meta_image_url
-  FROM token_profiles tp
-  LEFT JOIN token_metadata tm
-    ON tm.chain_id = tp.chain_id AND tm.token_address = tp.token_address
-`;
-
 async function latest(): Promise<Response> {
   const sql = getDb();
-  const rows = await sql.unsafe(`${PROFILE_SELECT} ORDER BY tp.created_at DESC LIMIT 50`);
+  const rows = await sql`SELECT * FROM token_profiles ORDER BY created_at DESC LIMIT 50`;
   return json(
     (rows as unknown as ProfileRow[]).map(serializeProfile),
     200,
@@ -29,7 +18,7 @@ async function latest(): Promise<Response> {
 
 async function recentUpdates(): Promise<Response> {
   const sql = getDb();
-  const rows = await sql.unsafe(`${PROFILE_SELECT} ORDER BY tp.updated_at DESC LIMIT 50`);
+  const rows = await sql`SELECT * FROM token_profiles ORDER BY updated_at DESC LIMIT 50`;
   return json(
     (rows as unknown as ProfileRow[]).map(serializeProfile),
     200,
@@ -42,10 +31,10 @@ async function single(chainId: string, tokenAddress: string): Promise<Response> 
     return json({ error: "not found" }, 404, CACHE);
   }
   const sql = getDb();
-  const rows = await sql.unsafe(
-    `${PROFILE_SELECT} WHERE tp.chain_id = $1 AND tp.token_address = $2 LIMIT 1`,
-    [chainId, tokenAddress]
-  );
+  const rows = await sql`
+    SELECT * FROM token_profiles
+    WHERE chain_id = ${chainId} AND token_address = ${tokenAddress} LIMIT 1
+  `;
   if (rows.length === 0) return json({ error: "not found" }, 404, CACHE);
   return json(serializeProfile(rows[0] as unknown as ProfileRow), 200, CACHE);
 }
