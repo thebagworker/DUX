@@ -77,11 +77,11 @@ export default function PriceChart({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-card">
-      <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-line px-4 py-2.5">
         <span className="text-xs font-semibold uppercase tracking-wide text-ink-dim">
           Price Chart
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {onEmbedClick && (
             <button
               onClick={onEmbedClick}

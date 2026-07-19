@@ -56,8 +56,8 @@ export default function TransactionsTable({
         </span>
       </div>
 
-      <div className="max-h-[440px] overflow-y-auto">
-        <table className="w-full text-left text-[13px]">
+      <div className="max-h-[440px] overflow-auto">
+        <table className="w-full min-w-[360px] text-left text-[13px]">
           <thead className="sticky top-0 z-10 bg-card text-[11px] uppercase tracking-wide text-ink-dim">
             <tr className="border-b border-line">
               <th className="px-4 py-2 font-medium">Time</th>

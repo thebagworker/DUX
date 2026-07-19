@@ -273,7 +273,7 @@ export default function TokenPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* left column: chart + trades */}
-        <div className="flex flex-col gap-4 lg:col-span-2">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <PriceChart
             pairAddress={pair?.pairAddress ?? null}
             onEmbedClick={() => setEmbedOpen(true)}
@@ -288,7 +288,7 @@ export default function TokenPage() {
         </div>
 
         {/* right column: stats + DUX enhanced info + editing */}
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           {pair && <StatsPanel pair={pair} />}
 
           {pair && (

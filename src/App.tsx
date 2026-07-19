@@ -135,7 +135,7 @@ function MobileNav() {
 /** Full DUX site chrome (notice + header + footer) shared by every normal page. */
 function SiteChrome() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-x-hidden">
       {/* non-affiliation notice, keep visible on every page */}
       <div className="border-b border-line bg-bg-soft px-5 py-1.5 text-left text-[11px] text-ink-dim">
         This is <strong>not</strong> Dexscreener. Independent open-source project, not affiliated
