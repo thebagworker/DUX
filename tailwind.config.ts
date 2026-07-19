@@ -1,0 +1,38 @@
+import type { Config } from "tailwindcss";
+
+export default {
+  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        bg: "#ffffff",
+        "bg-soft": "#f4f5f7",
+        card: "#ffffff",
+        line: "#e3e6ea",
+        ink: "#0a0a0a",
+        "ink-dim": "#6b7280",
+        accent: "#111111",
+        "accent-dark": "#333333",
+        danger: "#d92d20",
+      },
+      fontFamily: {
+        mono: ["ui-monospace", "SF Mono", "Menlo", "Consolas", "monospace"],
+      },
+      keyframes: {
+        "flash-border": {
+          "0%": { borderColor: "#111111", boxShadow: "0 0 18px rgba(17,17,17,0.25)" },
+          "100%": { borderColor: "#e3e6ea", boxShadow: "none" },
+        },
+        "pulse-dot": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
+        },
+      },
+      animation: {
+        flash: "flash-border 4s ease-out",
+        "pulse-dot": "pulse-dot 1.6s ease-in-out infinite",
+      },
+    },
+  },
+  plugins: [],
+} satisfies Config;
