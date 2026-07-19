@@ -8,7 +8,21 @@
  *  - normalizes to fixed output dimensions.
  */
 import * as jpeg from "jpeg-js";
-import { PNG } from "pngjs";
+import UPNGmod from "upng-js";
+
+// upng-js ships as an untyped UMD module; normalize the default export across
+// Node and Deno npm-compat and give it a minimal typed surface.
+interface UpngImage {
+  width: number;
+  height: number;
+}
+interface UpngApi {
+  decode(buf: ArrayBuffer): UpngImage;
+  toRGBA8(img: UpngImage): ArrayBuffer[];
+  encode(frames: ArrayBuffer[], width: number, height: number, colors: number): ArrayBuffer;
+}
+const upngRaw = UPNGmod as unknown as { default?: unknown };
+const UPNG = (upngRaw.default ?? UPNGmod) as UpngApi;
 
 export interface ProcessedImage {
   data: Uint8Array;
@@ -44,9 +58,11 @@ function toBuffer(u8: Uint8Array): Buffer {
 
 export function decodeImage(input: Uint8Array): Rgba {
   if (isPng(input)) {
-    const png = PNG.sync.read(toBuffer(input));
+    const buf = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength);
+    const png = UPNG.decode(buf as ArrayBuffer);
     if (png.width * png.height > MAX_INPUT_PIXELS) throw new Error("image too large");
-    return { width: png.width, height: png.height, data: new Uint8Array(png.data) };
+    const rgba = new Uint8Array(UPNG.toRGBA8(png)[0]);
+    return { width: png.width, height: png.height, data: rgba };
   }
   if (isJpeg(input)) {
     const img = jpeg.decode(toBuffer(input), {
@@ -114,9 +130,11 @@ function encodeJpeg(img: Rgba, quality: number): Uint8Array {
 }
 
 function encodePng(img: Rgba): Uint8Array {
-  const png = new PNG({ width: img.width, height: img.height });
-  (png.data as unknown as Uint8Array).set(img.data);
-  return new Uint8Array(PNG.sync.write(png));
+  const buf = img.data.buffer.slice(
+    img.data.byteOffset,
+    img.data.byteOffset + img.data.byteLength
+  );
+  return new Uint8Array(UPNG.encode([buf as ArrayBuffer], img.width, img.height, 0));
 }
 
 /** Banner/header: 1500x500 (3:1) JPEG. */
