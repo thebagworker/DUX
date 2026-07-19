@@ -26,7 +26,32 @@ export default {
         "brand-soft": "rgb(var(--color-brand-soft) / <alpha-value>)",
       },
       fontFamily: {
-        mono: ["ui-monospace", "SF Mono", "Menlo", "Consolas", "monospace"],
+        sans: [
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
+        display: [
+          "Space Grotesk",
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+        mono: [
+          "JetBrains Mono",
+          "ui-monospace",
+          "SF Mono",
+          "Menlo",
+          "Consolas",
+          "monospace",
+        ],
       },
       keyframes: {
         "flash-border": {

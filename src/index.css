@@ -47,8 +47,16 @@
 }
 
 body {
-  @apply bg-bg text-ink antialiased;
+  @apply bg-bg font-sans text-ink antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Tighten headings and the DUX wordmark with the geometric display face. */
+h1,
+h2,
+h3 {
+  @apply font-display tracking-tight;
 }
 
 @layer components {

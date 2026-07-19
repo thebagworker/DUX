@@ -39,7 +39,10 @@ function SiteChrome() {
       </div>
       <header className="border-b border-line">
         <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-5 py-4">
-          <Link to="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
+          <Link
+            to="/"
+            className="flex shrink-0 items-center gap-2 font-display text-lg font-bold tracking-tight"
+          >
             <img src="/logo.png" alt="DUX logo" className="h-8 w-8 dark:hidden" />
             <img src="/logo-dark.png" alt="DUX logo" className="hidden h-8 w-8 dark:block" />
             DUX
