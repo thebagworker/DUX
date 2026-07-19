@@ -7,8 +7,6 @@ import {
   isValidSolanaAddress,
 } from "../_shared/validation.ts";
 import { processBanner } from "../_shared/images.ts";
-import { fetchOnChainIcon } from "../_shared/tokenicon.ts";
-import { getMetadataAccount, parseMetadataUri } from "../_shared/solana.ts";
 import { serializeProfile, type ProfileRow } from "../_shared/serialize.ts";
 import { corsPreflight, json, rateLimit, clientIp, normalizedPath } from "../_shared/http.ts";
 
@@ -31,7 +29,6 @@ export async function handler(req: Request): Promise<Response> {
     return json({ error: "expected multipart/form-data" }, 400);
   }
 
-  // --- text payload
   let payload: {
     description?: string | null;
     links?: { type?: string; label?: string; url: string }[];
@@ -48,7 +45,6 @@ export async function handler(req: Request): Promise<Response> {
   const sql = getDb();
   let bannerImageId: string | undefined;
 
-  // --- banner
   const banner = form.get("banner");
   if (banner instanceof File && banner.size > 0) {
     if (banner.size > MAX_BANNER_UPLOAD) return json({ error: "banner exceeds 5 MB" }, 413);
@@ -68,7 +64,6 @@ export async function handler(req: Request): Promise<Response> {
     }
   }
 
-  // --- upsert profile
   const existingRows = await sql`
     SELECT * FROM token_profiles
     WHERE chain_id = 'solana' AND token_address = ${grant.tokenAddress} LIMIT 1
@@ -90,7 +85,6 @@ export async function handler(req: Request): Promise<Response> {
     `;
     row = rows[0] as unknown as ProfileRow;
 
-    // delete replaced images so the DB stays bounded
     if (bannerImageId && existing.header_image_id) {
       await sql`DELETE FROM images WHERE id = ${existing.header_image_id}`;
     }
@@ -102,37 +96,16 @@ export async function handler(req: Request): Promise<Response> {
         ('solana', ${grant.tokenAddress}, ${payload.description ?? null},
          ${sql.json(payload.links ?? [])}, ${bannerImageId ?? null},
          ${grant.wallet}, ${grant.role})
+      ON CONFLICT (chain_id, token_address) DO UPDATE SET
+        description = EXCLUDED.description,
+        links = EXCLUDED.links,
+        header_image_id = COALESCE(EXCLUDED.header_image_id, token_profiles.header_image_id),
+        updated_by = EXCLUDED.updated_by,
+        updated_by_role = EXCLUDED.updated_by_role,
+        updated_at = now()
       RETURNING *
     `;
     row = rows[0] as unknown as ProfileRow;
-  }
-
-  // Best-effort: populate the token icon from on-chain metadata (never user-editable).
-  if (!row.icon_image_id) {
-    try {
-      const meta = await getMetadataAccount(grant.tokenAddress);
-      const uri = meta ? parseMetadataUri(meta) : null;
-      const icon = uri ? await fetchOnChainIcon(uri) : null;
-      if (icon) {
-        const imgRows = await sql`
-          INSERT INTO images (data, content_type, bytes)
-          VALUES (${icon.data as unknown as Buffer}, ${icon.contentType}, ${icon.bytes})
-          RETURNING id
-        `;
-        const updatedRows = await sql`
-          UPDATE token_profiles SET icon_image_id = ${imgRows[0].id}
-          WHERE id = ${(row as unknown as { id: string }).id} AND icon_image_id IS NULL
-          RETURNING *
-        `;
-        if (updatedRows[0]) {
-          row = updatedRows[0] as unknown as ProfileRow;
-        } else {
-          await sql`DELETE FROM images WHERE id = ${imgRows[0].id}`;
-        }
-      }
-    } catch {
-      /* icon backfill must never fail the save */
-    }
   }
 
   await sql`
