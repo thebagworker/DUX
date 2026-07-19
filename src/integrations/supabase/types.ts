@@ -14,7 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          detail: Json | null
+          id: string
+          role: string
+          token_address: string
+          wallet: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          role: string
+          token_address: string
+          wallet: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          role?: string
+          token_address?: string
+          wallet?: string
+        }
+        Relationships: []
+      }
+      auth_nonces: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          nonce: string
+          token_address: string
+          used: boolean
+          wallet: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          nonce: string
+          token_address: string
+          used?: boolean
+          wallet: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          nonce?: string
+          token_address?: string
+          used?: boolean
+          wallet?: string
+        }
+        Relationships: []
+      }
+      images: {
+        Row: {
+          bytes: number
+          content_type: string
+          created_at: string
+          data: string
+          id: string
+        }
+        Insert: {
+          bytes: number
+          content_type?: string
+          created_at?: string
+          data: string
+          id?: string
+        }
+        Update: {
+          bytes?: number
+          content_type?: string
+          created_at?: string
+          data?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      token_profiles: {
+        Row: {
+          chain_id: string
+          created_at: string
+          description: string | null
+          header_image_id: string | null
+          icon_image_id: string | null
+          id: string
+          links: Json
+          token_address: string
+          updated_at: string
+          updated_by: string
+          updated_by_role: string
+        }
+        Insert: {
+          chain_id?: string
+          created_at?: string
+          description?: string | null
+          header_image_id?: string | null
+          icon_image_id?: string | null
+          id?: string
+          links?: Json
+          token_address: string
+          updated_at?: string
+          updated_by: string
+          updated_by_role: string
+        }
+        Update: {
+          chain_id?: string
+          created_at?: string
+          description?: string | null
+          header_image_id?: string | null
+          icon_image_id?: string | null
+          id?: string
+          links?: Json
+          token_address?: string
+          updated_at?: string
+          updated_by?: string
+          updated_by_role?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
