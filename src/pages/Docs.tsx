@@ -116,8 +116,8 @@ if (res.ok) {
             <td className={`${td} ${code}`}>PUT /profile</td>
             <td className={td}>
               Multipart update: banner (→1500×500 JPEG), description, links (https only).
-              Banners are re-encoded server-side, metadata stripped. The token icon is never
-              user-editable; the server auto-fills it from the token's on-chain metadata.
+              Banners are re-encoded server-side, metadata stripped. The `icon` field in the
+              API is always null (schema compatibility only); integrators use their own icon source.
             </td>
           </tr>
         </tbody>
