@@ -27,14 +27,7 @@ export default function App() {
               <Link to="/docs" className="hover:text-ink">
                 API Docs
               </Link>
-              
-                href="https://github.com/Fearonchain/fearonchain"
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-ink"
-              >
-                GitHub
-              </a>
+              <a href="https://github.com/Fearonchain/fearonchain" target="_blank" rel="noreferrer" className="hover:text-ink">GitHub</a>
             </nav>
           </div>
         </header>
