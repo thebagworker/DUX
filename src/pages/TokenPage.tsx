@@ -9,6 +9,7 @@ import TokenHeader from "../components/token/TokenHeader";
 import PriceChart from "../components/token/PriceChart";
 import EmbedChartDialog from "../components/token/EmbedChartDialog";
 import StatsPanel from "../components/token/StatsPanel";
+import HoldingValue from "../components/token/HoldingValue";
 import TransactionsTable from "../components/token/TransactionsTable";
 import { Skeleton, Spinner } from "../components/ui/Skeleton";
 import WatchButton from "../components/WatchButton";
@@ -41,6 +42,9 @@ export default function TokenPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [marketLoading, setMarketLoading] = useState(true);
   const [embedOpen, setEmbedOpen] = useState(false);
+  // Alerts are a niche feature, so the panel starts collapsed and users expand
+  // it only when they actually want to set one.
+  const [alertsOpen, setAlertsOpen] = useState(false);
 
   const bannerPreview = useMemo(
     () => (bannerFile ? URL.createObjectURL(bannerFile) : (profile?.header ?? null)),
@@ -287,6 +291,14 @@ export default function TokenPage() {
         <div className="flex flex-col gap-4">
           {pair && <StatsPanel pair={pair} />}
 
+          {pair && (
+            <HoldingValue
+              address={address}
+              priceUsd={pair.priceUsd}
+              symbol={pair.baseSymbol}
+            />
+          )}
+
           {/* DUX enhanced token info (the product itself) */}
           <section className="overflow-hidden rounded-2xl border border-line bg-card">
             <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
@@ -326,21 +338,54 @@ export default function TokenPage() {
             </div>
           </section>
 
-          {/* Watchlist price alerts for this token (stored locally). */}
+          {/* Watchlist price alerts for this token (stored locally). Collapsed
+              by default since most visitors don't set alerts. */}
           <section className="rounded-2xl border border-line bg-card p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <h3 className="font-semibold">Price alerts</h3>
-              <WatchButton address={address} compact className="ml-auto" />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAlertsOpen((open) => !open)}
+                aria-expanded={alertsOpen}
+                className="flex flex-1 items-center gap-2 text-left"
+              >
+                <h3 className="font-semibold">Price alerts</h3>
+                {alertsForToken(address).length > 0 && (
+                  <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[11px] font-bold text-brand">
+                    {alertsForToken(address).length}
+                  </span>
+                )}
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                  className={`ml-auto h-4 w-4 text-ink-dim transition-transform ${
+                    alertsOpen ? "rotate-180" : ""
+                  }`}
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+              <WatchButton address={address} compact />
             </div>
-            <AlertForm
-              address={address}
-              currentPrice={pair?.priceUsd ?? null}
-              currentMarketCap={pair?.marketCap ?? null}
-            />
-            {alertsForToken(address).length > 0 && (
-              <div className="mt-4">
-                <AlertList alerts={alertsForToken(address)} />
-              </div>
+            {alertsOpen && (
+              <>
+                <div className="mt-3">
+                  <AlertForm
+                    address={address}
+                    currentPrice={pair?.priceUsd ?? null}
+                    currentMarketCap={pair?.marketCap ?? null}
+                  />
+                </div>
+                {alertsForToken(address).length > 0 && (
+                  <div className="mt-4">
+                    <AlertList alerts={alertsForToken(address)} />
+                  </div>
+                )}
+              </>
             )}
           </section>
 

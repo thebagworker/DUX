@@ -383,9 +383,16 @@ export function WalletButton() {
       <button
         onClick={openPicker}
         disabled={connecting}
-        className="rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-bg transition hover:bg-accent-dark disabled:opacity-50"
+        className="rounded-xl bg-brand-strong px-3.5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-50 sm:px-5"
       >
-        {connecting ? "Connecting…" : "Connect Wallet"}
+        {connecting ? (
+          "Connecting…"
+        ) : (
+          <>
+            <span className="sm:hidden">Connect</span>
+            <span className="hidden sm:inline">Connect Wallet</span>
+          </>
+        )}
       </button>
     );
   }
@@ -395,7 +402,7 @@ export function WalletButton() {
     <div className="relative">
       <button
         onClick={() => setMenuOpen((open) => !open)}
-        className="flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-bg transition hover:bg-accent-dark"
+        className="flex items-center gap-2 rounded-xl bg-brand-strong px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-110"
       >
         {selectedWalletIcon && (
           <img src={selectedWalletIcon} alt="" className="h-4 w-4 rounded" />

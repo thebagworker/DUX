@@ -20,37 +20,39 @@ export default function Docs() {
       </p>
 
       <h2 className="mt-9 border-b border-line pb-2 text-xl font-semibold">Endpoints</h2>
-      <table className="my-3 w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            <th className={th}>Method</th>
-            <th className={th}>Path</th>
-            <th className={th}>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className={td}>GET</td>
-            <td className={`${td} ${code}`}>/token-profiles/latest/v1</td>
-            <td className={td}>Newest token profiles (max 50), same schema as Dexscreener</td>
-          </tr>
-          <tr>
-            <td className={td}>GET</td>
-            <td className={`${td} ${code}`}>/token-profiles/recent-updates/v1</td>
-            <td className={td}>Most recently updated profiles (max 50)</td>
-          </tr>
-          <tr>
-            <td className={td}>GET</td>
-            <td className={`${td} ${code}`}>/token-profiles/solana/{"{tokenAddress}"}</td>
-            <td className={td}>Single profile by mint address (404 if none)</td>
-          </tr>
-          <tr>
-            <td className={td}>GET</td>
-            <td className={`${td} ${code}`}>/token-profiles/images/{"{id}"}</td>
-            <td className={td}>Banner/icon image (JPEG/PNG, cached immutable)</td>
-          </tr>
-        </tbody>
-      </table>
+      <div className="my-3 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <table className="w-full min-w-[560px] border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className={th}>Method</th>
+              <th className={th}>Path</th>
+              <th className={th}>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className={td}>GET</td>
+              <td className={`${td} ${code} whitespace-nowrap`}>/token-profiles/latest/v1</td>
+              <td className={td}>Newest token profiles (max 50), same schema as Dexscreener</td>
+            </tr>
+            <tr>
+              <td className={td}>GET</td>
+              <td className={`${td} ${code} whitespace-nowrap`}>/token-profiles/recent-updates/v1</td>
+              <td className={td}>Most recently updated profiles (max 50)</td>
+            </tr>
+            <tr>
+              <td className={td}>GET</td>
+              <td className={`${td} ${code} whitespace-nowrap`}>/token-profiles/solana/{"{tokenAddress}"}</td>
+              <td className={td}>Single profile by mint address (404 if none)</td>
+            </tr>
+            <tr>
+              <td className={td}>GET</td>
+              <td className={`${td} ${code} whitespace-nowrap`}>/token-profiles/images/{"{id}"}</td>
+              <td className={td}>Banner/icon image (JPEG/PNG, cached immutable)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <h2 className="mt-9 border-b border-line pb-2 text-xl font-semibold">Response schema</h2>
       <pre className={pre}>{`{
@@ -86,42 +88,44 @@ if (res.ok) {
       <h2 className="mt-9 border-b border-line pb-2 text-xl font-semibold">
         Verification (how write access works)
       </h2>
-      <table className="my-3 w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            <th className={th}>Step</th>
-            <th className={th}>What happens</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className={`${td} ${code}`}>POST /auth/nonce</td>
-            <td className={td}>
-              Server creates a single-use nonce (valid 5 min) and the message to sign
-            </td>
-          </tr>
-          <tr>
-            <td className={td}>Wallet signature</td>
-            <td className={td}>Phantom/Solflare signs the message (no transaction, free)</td>
-          </tr>
-          <tr>
-            <td className={`${td} ${code}`}>POST /auth/verify</td>
-            <td className={td}>
-              Ed25519 check + on-chain check: Metaplex update authority, mint authority,
-              pump.fun creator, or ≥3% of supply. On success: JWT (30 min), scoped to exactly
-              this token.
-            </td>
-          </tr>
-          <tr>
-            <td className={`${td} ${code}`}>PUT /profile</td>
-            <td className={td}>
-              Multipart update: banner (→1500×500 JPEG), description, links (https only).
-              Banners are re-encoded server-side, metadata stripped. The `icon` field in the
-              API is always null (schema compatibility only); integrators use their own icon source.
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div className="my-3 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <table className="w-full min-w-[520px] border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className={th}>Step</th>
+              <th className={th}>What happens</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className={`${td} ${code} whitespace-nowrap`}>POST /auth/nonce</td>
+              <td className={td}>
+                Server creates a single-use nonce (valid 5 min) and the message to sign
+              </td>
+            </tr>
+            <tr>
+              <td className={td}>Wallet signature</td>
+              <td className={td}>Phantom/Solflare signs the message (no transaction, free)</td>
+            </tr>
+            <tr>
+              <td className={`${td} ${code} whitespace-nowrap`}>POST /auth/verify</td>
+              <td className={td}>
+                Ed25519 check + on-chain check: Metaplex update authority, mint authority,
+                pump.fun creator, or ≥3% of supply. On success: JWT (30 min), scoped to exactly
+                this token.
+              </td>
+            </tr>
+            <tr>
+              <td className={`${td} ${code} whitespace-nowrap`}>PUT /profile</td>
+              <td className={td}>
+                Multipart update: banner (→1500×500 JPEG), description, links (https only).
+                Banners are re-encoded server-side, metadata stripped. The `icon` field in the
+                API is always null (schema compatibility only); integrators use their own icon source.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <h2 className="mt-9 border-b border-line pb-2 text-xl font-semibold">Rate limits</h2>
       <p className="mt-2 text-ink-dim">

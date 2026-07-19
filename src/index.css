@@ -23,6 +23,7 @@
   --color-down-soft: 254 226 226;
   --color-brand: 109 94 252;
   --color-brand-soft: 238 240 255;
+  --color-brand-strong: 91 74 227;
   color-scheme: light;
 }
 
@@ -43,6 +44,8 @@
   --color-down-soft: 58 24 24;
   --color-brand: 141 130 255;
   --color-brand-soft: 33 31 60;
+  /* Deeper, saturated purple for solid buttons so they don't wash out on dark. */
+  --color-brand-strong: 79 63 199;
   color-scheme: dark;
 }
 
@@ -57,6 +60,17 @@ h1,
 h2,
 h3 {
   @apply font-display tracking-tight;
+}
+
+/*
+ * Buttons get the display face too, so calls-to-action read as branded and
+ * intentional rather than plain UI text. Kept in `base` so each button's own
+ * weight/tracking utilities still win.
+ */
+@layer base {
+  button {
+    @apply font-display tracking-tight;
+  }
 }
 
 @layer components {

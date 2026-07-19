@@ -24,6 +24,7 @@ export default {
         "down-soft": "rgb(var(--color-down-soft) / <alpha-value>)",
         brand: "rgb(var(--color-brand) / <alpha-value>)",
         "brand-soft": "rgb(var(--color-brand-soft) / <alpha-value>)",
+        "brand-strong": "rgb(var(--color-brand-strong) / <alpha-value>)",
       },
       fontFamily: {
         sans: [
