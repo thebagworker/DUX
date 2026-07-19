@@ -3,13 +3,14 @@ import { ThemeProvider } from "./lib/theme";
 import { WatchlistProvider, useWatchlist } from "./lib/watchlist";
 import ThemeToggle from "./components/ThemeToggle";
 import ToastHost from "./components/ToastHost";
-import WalletProviders from "./components/WalletProviders";
+import WalletProviders, { WalletButton } from "./components/WalletProviders";
 import GlobalSearch from "./components/GlobalSearch";
 import Landing from "./pages/Landing";
 import TokenPage from "./pages/TokenPage";
 import Feed from "./pages/Feed";
 import Docs from "./pages/Docs";
 import Watchlist from "./pages/Watchlist";
+import Portfolio from "./pages/Portfolio";
 import EmbedChart from "./pages/EmbedChart";
 
 /** Header link to the watchlist, badged with the number of watched tokens. */
@@ -39,7 +40,8 @@ function SiteChrome() {
       <header className="border-b border-line">
         <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-5 py-4">
           <Link to="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
-            <img src="/logo.png" alt="DUX logo" className="h-8 w-8" />
+            <img src="/logo.png" alt="DUX logo" className="h-8 w-8 dark:hidden" />
+            <img src="/logo-dark.png" alt="DUX logo" className="hidden h-8 w-8 dark:block" />
             DUX
           </Link>
           <div className="flex flex-1 justify-center">
@@ -49,6 +51,9 @@ function SiteChrome() {
             <Link to="/feed" className="hidden hover:text-ink sm:inline">
               Live Feed
             </Link>
+            <Link to="/portfolio" className="hidden hover:text-ink sm:inline">
+              Portfolio
+            </Link>
             <WatchlistNavLink />
             <Link to="/docs" className="hidden hover:text-ink sm:inline">
               API Docs
@@ -57,11 +62,12 @@ function SiteChrome() {
               href="https://github.com/Fearonchain/DUX"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-ink"
+              className="hidden hover:text-ink sm:inline"
             >
               GitHub
             </a>
             <ThemeToggle />
+            <WalletButton />
           </nav>
         </div>
       </header>
@@ -97,6 +103,7 @@ export default function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/token/:address" element={<TokenPage />} />
               <Route path="/feed" element={<Feed />} />
+              <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/watchlist" element={<Watchlist />} />
               <Route path="/docs" element={<Docs />} />
             </Route>
