@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { API_BASE } from "../lib/config";
 import { relTime, type TokenProfile } from "../lib/types";
-import { fetchMarketPair, fetchTokenBriefs, type MarketPair, type TokenBrief } from "../lib/market";
+import { fetchMarketPairs, fetchTokenBriefs, type MarketPair, type TokenBrief } from "../lib/market";
 import FeedToolbar, { type FeedViewMode } from "../components/feed/FeedToolbar";
 import FeedCard from "../components/feed/FeedCard";
 import FeedTable from "../components/feed/FeedTable";
@@ -94,17 +94,21 @@ export default function Feed() {
     };
   }, []);
 
-  // Lazily pull live market data for each token that shows up in the feed.
+  // Lazily pull live market data for the feed in batched requests (up to 30
+  // tokens per Dexscreener call) rather than one request per token, so a full
+  // page of charts resolves in a couple of requests instead of dozens.
   useEffect(() => {
     let cancelled = false;
+    const pending = profiles
+      .map((p) => p.tokenAddress)
+      .filter((addr) => !fetchedMarkets.current.has(addr));
+    if (pending.length === 0) return;
+
+    pending.forEach((addr) => fetchedMarkets.current.add(addr));
     (async () => {
-      for (const p of profiles) {
-        if (fetchedMarkets.current.has(p.tokenAddress)) continue;
-        fetchedMarkets.current.add(p.tokenAddress);
-        const pair = await fetchMarketPair(p.tokenAddress);
-        if (cancelled) return;
-        setMarkets((m) => ({ ...m, [p.tokenAddress]: pair }));
-      }
+      const map = await fetchMarketPairs(pending);
+      if (cancelled) return;
+      setMarkets((m) => ({ ...m, ...map }));
     })();
     return () => {
       cancelled = true;

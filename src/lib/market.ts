@@ -57,52 +57,117 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Dexscreener accepts up to 30 comma-separated token addresses per request. */
+const DEXSCREENER_BATCH_SIZE = 30;
+
+/** Shape a raw Dexscreener pair row into our typed MarketPair. */
+function mapDexscreenerPair(raw: any): MarketPair {
+  return {
+    pairAddress: raw.pairAddress,
+    dexId: raw.dexId ?? "",
+    url: raw.url ?? "",
+    baseSymbol: raw.baseToken?.symbol ?? "TOKEN",
+    baseName: raw.baseToken?.name ?? "Unknown token",
+    quoteSymbol: raw.quoteToken?.symbol ?? "SOL",
+    imageUrl: raw.info?.imageUrl ?? null,
+    priceUsd: toNumber(raw.priceUsd),
+    priceNative: toNumber(raw.priceNative),
+    priceChange: {
+      m5: toNumber(raw.priceChange?.m5),
+      h1: toNumber(raw.priceChange?.h1),
+      h6: toNumber(raw.priceChange?.h6),
+      h24: toNumber(raw.priceChange?.h24),
+    },
+    txns: {
+      m5: { buys: toNumber(raw.txns?.m5?.buys), sells: toNumber(raw.txns?.m5?.sells) },
+      h1: { buys: toNumber(raw.txns?.h1?.buys), sells: toNumber(raw.txns?.h1?.sells) },
+      h6: { buys: toNumber(raw.txns?.h6?.buys), sells: toNumber(raw.txns?.h6?.sells) },
+      h24: { buys: toNumber(raw.txns?.h24?.buys), sells: toNumber(raw.txns?.h24?.sells) },
+    },
+    volume: {
+      m5: toNumber(raw.volume?.m5),
+      h1: toNumber(raw.volume?.h1),
+      h6: toNumber(raw.volume?.h6),
+      h24: toNumber(raw.volume?.h24),
+    },
+    liquidityUsd: toNumber(raw.liquidity?.usd),
+    fdv: toNumber(raw.fdv),
+    marketCap: toNumber(raw.marketCap),
+    pairCreatedAt: raw.pairCreatedAt ? Number(raw.pairCreatedAt) : null,
+  };
+}
+
+/** Pick the deepest (most liquid) Solana pair from a list of raw pair rows. */
+function deepestSolanaPair(pairs: any[]): any | null {
+  const solanaPairs = pairs.filter((p) => p?.chainId === NETWORK);
+  if (solanaPairs.length === 0) return null;
+  return solanaPairs.reduce((a, b) =>
+    toNumber(b?.liquidity?.usd) > toNumber(a?.liquidity?.usd) ? b : a
+  );
+}
+
 /** Fetch the deepest (most liquid) Solana pair for a token from Dexscreener. */
 export async function fetchMarketPair(tokenAddress: string): Promise<MarketPair | null> {
   const res = await fetch(`${DEXSCREENER_BASE}/tokens/${tokenAddress}`, { cache: "no-store" });
   if (!res.ok) return null;
   const body = await res.json();
   const pairs: any[] = Array.isArray(body?.pairs) ? body.pairs : [];
-  const solanaPairs = pairs.filter((p) => p?.chainId === NETWORK);
-  if (solanaPairs.length === 0) return null;
+  const best = deepestSolanaPair(pairs);
+  return best ? mapDexscreenerPair(best) : null;
+}
 
-  const best = solanaPairs.reduce((a, b) =>
-    toNumber(b?.liquidity?.usd) > toNumber(a?.liquidity?.usd) ? b : a
+/**
+ * Fetch the deepest Solana pair for many tokens at once.
+ *
+ * Dexscreener's `/tokens/{a,b,c,...}` endpoint returns pairs for up to 30
+ * addresses per request, so the whole feed resolves in a handful of batched
+ * requests instead of one request per token. This keeps the live feed from
+ * hammering the API (and tripping its rate limit) when many charts are on
+ * screen at once. Tokens with no Solana pair are returned as `null` so callers
+ * can distinguish "checked, none found" from "not fetched yet".
+ */
+export async function fetchMarketPairs(
+  addresses: string[]
+): Promise<Record<string, MarketPair | null>> {
+  const unique = [...new Set(addresses)];
+  const marketByAddress: Record<string, MarketPair | null> = {};
+  for (const address of unique) marketByAddress[address] = null;
+  if (unique.length === 0) return marketByAddress;
+
+  const batches: string[][] = [];
+  for (let i = 0; i < unique.length; i += DEXSCREENER_BATCH_SIZE) {
+    batches.push(unique.slice(i, i + DEXSCREENER_BATCH_SIZE));
+  }
+
+  await Promise.all(
+    batches.map(async (batch) => {
+      try {
+        const res = await fetch(`${DEXSCREENER_BASE}/tokens/${batch.join(",")}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        const pairs: any[] = Array.isArray(body?.pairs) ? body.pairs : [];
+
+        // Group every returned pair under the base token it belongs to.
+        const pairsByAddress: Record<string, any[]> = {};
+        for (const pair of pairs) {
+          const address = pair?.baseToken?.address as string | undefined;
+          if (!address) continue;
+          (pairsByAddress[address] ??= []).push(pair);
+        }
+
+        for (const address of batch) {
+          const best = deepestSolanaPair(pairsByAddress[address] ?? []);
+          if (best) marketByAddress[address] = mapDexscreenerPair(best);
+        }
+      } catch {
+        /* transient error — these tokens simply stay null this pass */
+      }
+    })
   );
 
-  return {
-    pairAddress: best.pairAddress,
-    dexId: best.dexId ?? "",
-    url: best.url ?? "",
-    baseSymbol: best.baseToken?.symbol ?? "TOKEN",
-    baseName: best.baseToken?.name ?? "Unknown token",
-    quoteSymbol: best.quoteToken?.symbol ?? "SOL",
-    imageUrl: best.info?.imageUrl ?? null,
-    priceUsd: toNumber(best.priceUsd),
-    priceNative: toNumber(best.priceNative),
-    priceChange: {
-      m5: toNumber(best.priceChange?.m5),
-      h1: toNumber(best.priceChange?.h1),
-      h6: toNumber(best.priceChange?.h6),
-      h24: toNumber(best.priceChange?.h24),
-    },
-    txns: {
-      m5: { buys: toNumber(best.txns?.m5?.buys), sells: toNumber(best.txns?.m5?.sells) },
-      h1: { buys: toNumber(best.txns?.h1?.buys), sells: toNumber(best.txns?.h1?.sells) },
-      h6: { buys: toNumber(best.txns?.h6?.buys), sells: toNumber(best.txns?.h6?.sells) },
-      h24: { buys: toNumber(best.txns?.h24?.buys), sells: toNumber(best.txns?.h24?.sells) },
-    },
-    volume: {
-      m5: toNumber(best.volume?.m5),
-      h1: toNumber(best.volume?.h1),
-      h6: toNumber(best.volume?.h6),
-      h24: toNumber(best.volume?.h24),
-    },
-    liquidityUsd: toNumber(best.liquidity?.usd),
-    fdv: toNumber(best.fdv),
-    marketCap: toNumber(best.marketCap),
-    pairCreatedAt: best.pairCreatedAt ? Number(best.pairCreatedAt) : null,
-  };
+  return marketByAddress;
 }
 
 export interface TokenBrief {
