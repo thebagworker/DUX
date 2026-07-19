@@ -1,33 +1,46 @@
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { ConnectionProvider, WalletProvider, useWallet } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { BROWSER_RPC } from "../lib/config";
 
-function WalletSelectionReset({ children }: { children: ReactNode }) {
-  const { connected, disconnecting, select } = useWallet();
-  const wasConnected = useRef(connected);
+/**
+ * After a disconnect, clear the persisted wallet selection so the next click
+ * on the connect button always opens the wallet picker modal again instead of
+ * silently reconnecting the previously selected wallet.
+ */
+function WalletSelectionReset() {
+  const { wallet, select } = useWallet();
 
   useEffect(() => {
-    if (wasConnected.current && !connected && !disconnecting) {
-      // After a disconnect finishes, clear the persisted wallet selection so the
-      // next click on the wallet button opens the picker modal instead of silently
-      // reconnecting to the previously selected wallet.
+    const adapter = wallet?.adapter;
+    if (!adapter) return;
+    const onDisconnect = () => {
       select(null);
-    }
-    wasConnected.current = connected;
-  }, [connected, disconnecting, select]);
+      try {
+        localStorage.removeItem("walletName");
+      } catch {
+        /* storage unavailable, selection reset above is enough */
+      }
+    };
+    adapter.on("disconnect", onDisconnect);
+    return () => {
+      adapter.off("disconnect", onDisconnect);
+    };
+  }, [wallet, select]);
 
-  return children;
+  return null;
 }
 
 export default function WalletProviders({ children }: { children: ReactNode }) {
   const wallets = useMemo(() => [new PhantomWalletAdapter(), new SolflareWalletAdapter()], []);
   return (
     <ConnectionProvider endpoint={BROWSER_RPC}>
+      {/* no autoConnect: the site never reconnects silently on page load */}
       <WalletProvider wallets={wallets}>
         <WalletModalProvider>
-          <WalletSelectionReset>{children}</WalletSelectionReset>
+          <WalletSelectionReset />
+          {children}
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
