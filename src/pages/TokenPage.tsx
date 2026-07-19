@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import bs58 from "bs58";
 import { API_BASE } from "../lib/config";
 import { useWallet, WalletButton } from "../components/WalletProviders";
-import { LINK_TYPES, shortenAddress, type TokenLink, type TokenProfile } from "../lib/types";
+import { shortenAddress, type TokenProfile } from "../lib/types";
 
 export default function TokenPage() {
   const { address = "" } = useParams();
@@ -18,7 +18,8 @@ export default function TokenPage() {
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const [description, setDescription] = useState("");
-  const [links, setLinks] = useState<TokenLink[]>([]);
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [twitterUrl, setTwitterUrl] = useState("");
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
 
@@ -35,7 +36,9 @@ export default function TokenPage() {
         const p: TokenProfile = await res.json();
         setProfile(p);
         setDescription(p.description ?? "");
-        setLinks(p.links ?? []);
+        const ls = p.links ?? [];
+        setWebsiteUrl(ls.find((l) => l.type === "website")?.url ?? "");
+        setTwitterUrl(ls.find((l) => l.type === "twitter")?.url ?? "");
       } else {
         setProfile(null);
       }
@@ -81,20 +84,69 @@ export default function TokenPage() {
     }
   }
 
+  /**
+   * Convert any browser-readable image into a clean 1500x500 JPEG before
+   * upload (cover-crop). This makes huge photos, webp, etc. just work; the
+   * server still re-validates and re-encodes it.
+   */
+  async function prepareBanner(file: File): Promise<Blob> {
+    const bitmap = await createImageBitmap(file).catch(() => null);
+    let source: CanvasImageSource;
+    let sw: number;
+    let sh: number;
+    if (bitmap) {
+      source = bitmap;
+      sw = bitmap.width;
+      sh = bitmap.height;
+    } else {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error("Could not read this image file"));
+      });
+      source = img;
+      sw = img.naturalWidth;
+      sh = img.naturalHeight;
+    }
+    const TW = 1500;
+    const TH = 500;
+    const scale = Math.max(TW / sw, TH / sh);
+    const cw = TW / scale;
+    const ch = TH / scale;
+    const sx = (sw - cw) / 2;
+    const sy = (sh - ch) / 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = TW;
+    canvas.height = TH;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not process the image");
+    ctx.drawImage(source, sx, sy, cw, ch, 0, 0, TW, TH);
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.86));
+    if (!blob) throw new Error("Could not process the image");
+    return blob;
+  }
+
   async function save() {
     if (!editToken) return;
     setSaving(true);
     setMsg(null);
     try {
+      const links: { type: string; url: string }[] = [];
+      if (websiteUrl.trim()) links.push({ type: "website", url: websiteUrl.trim() });
+      if (twitterUrl.trim()) links.push({ type: "twitter", url: twitterUrl.trim() });
       const form = new FormData();
       form.set(
         "payload",
         JSON.stringify({
           description: description.trim() || null,
-          links: links.filter((l) => l.url.trim().length > 0),
+          links,
         })
       );
-      if (bannerFile) form.set("banner", bannerFile);
+      if (bannerFile) {
+        const prepared = await prepareBanner(bannerFile);
+        form.set("banner", new File([prepared], "banner.jpg", { type: "image/jpeg" }));
+      }
 
       const res = await fetch(`${API_BASE}/profile`, {
         method: "PUT",
@@ -112,10 +164,6 @@ export default function TokenPage() {
     } finally {
       setSaving(false);
     }
-  }
-
-  function setLink(i: number, patch: Partial<TokenLink>) {
-    setLinks((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   }
 
   const inputCls =
@@ -160,16 +208,16 @@ export default function TokenPage() {
               {description || <span className="text-ink-dim">No description</span>}
             </p>
             <div className="flex flex-wrap gap-2">
-              {links
-                .filter((l) => l.url)
-                .map((l, i) => (
-                  <span
-                    key={i}
-                    className="rounded-full border border-line bg-bg-soft px-2.5 py-0.5 text-xs text-ink-dim"
-                  >
-                    {l.label || l.type || "link"}
-                  </span>
-                ))}
+              {websiteUrl.trim() && (
+                <span className="rounded-full border border-line bg-bg-soft px-2.5 py-0.5 text-xs text-ink-dim">
+                  website
+                </span>
+              )}
+              {twitterUrl.trim() && (
+                <span className="rounded-full border border-line bg-bg-soft px-2.5 py-0.5 text-xs text-ink-dim">
+                  X
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -210,12 +258,12 @@ export default function TokenPage() {
 
           <label className="mb-4 flex flex-col gap-1.5">
             <span className="text-[13px] text-ink-dim">
-              Banner (3:1, cropped to 1500×500, max 5 MB)
+              Banner (any image, will be cropped to 1500×500)
             </span>
             <input
               ref={bannerInput}
               type="file"
-              accept="image/png,image/jpeg"
+              accept="image/*"
               onChange={(e) => setBannerFile(e.target.files?.[0] ?? null)}
               className={inputCls}
             />
@@ -233,44 +281,25 @@ export default function TokenPage() {
             />
           </label>
 
-          <div className="mb-4 flex flex-col gap-1.5">
-            <span className="text-[13px] text-ink-dim">Links (https only, max 10)</span>
-            {links.map((l, i) => (
-              <div key={i} className="flex gap-2">
-                <select
-                  value={l.type ?? "website"}
-                  onChange={(e) => setLink(i, { type: e.target.value })}
-                  className={inputCls}
-                >
-                  {LINK_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  placeholder="https://…"
-                  value={l.url}
-                  onChange={(e) => setLink(i, { url: e.target.value })}
-                  className={`${inputCls} flex-1`}
-                />
-                <button
-                  onClick={() => setLinks((ls) => ls.filter((_, j) => j !== i))}
-                  className="rounded-lg border border-line px-3 text-sm text-ink-dim hover:border-ink-dim hover:text-ink"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-            {links.length < 10 && (
-              <button
-                onClick={() => setLinks((ls) => [...ls, { type: "website", url: "" }])}
-                className="self-start rounded-lg border border-line px-3 py-2 text-[13px] text-ink-dim hover:border-ink-dim hover:text-ink"
-              >
-                + Add link
-              </button>
-            )}
-          </div>
+          <label className="mb-4 flex flex-col gap-1.5">
+            <span className="text-[13px] text-ink-dim">Website (https)</span>
+            <input
+              placeholder="https://yourproject.com"
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              className={inputCls}
+            />
+          </label>
+
+          <label className="mb-4 flex flex-col gap-1.5">
+            <span className="text-[13px] text-ink-dim">X (Twitter) link</span>
+            <input
+              placeholder="https://x.com/yourproject"
+              value={twitterUrl}
+              onChange={(e) => setTwitterUrl(e.target.value)}
+              className={inputCls}
+            />
+          </label>
 
           <button
             onClick={save}

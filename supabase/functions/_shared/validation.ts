@@ -14,7 +14,7 @@ export function isValidSolanaAddress(addr: string): boolean {
 
 export const solanaAddressSchema = z.string().refine(isValidSolanaAddress, "invalid Solana address");
 
-const ALLOWED_LINK_TYPES = ["website", "twitter", "telegram", "discord", "docs", "other"] as const;
+const ALLOWED_LINK_TYPES = ["website", "twitter"] as const;
 
 /**
  * Link validation:
@@ -23,7 +23,7 @@ const ALLOWED_LINK_TYPES = ["website", "twitter", "telegram", "discord", "docs",
  * - max lengths to keep API responses sane
  */
 export const linkSchema = z.object({
-  type: z.enum(ALLOWED_LINK_TYPES).optional(),
+  type: z.enum(ALLOWED_LINK_TYPES),
   label: z.string().trim().min(1).max(32).optional(),
   url: z
     .string()
@@ -54,7 +54,26 @@ export const linkSchema = z.object({
 
 export const profileUpdateSchema = z.object({
   description: z.string().trim().max(600).optional().nullable(),
-  links: z.array(linkSchema).max(10).optional(),
+  /** at most one website link and one X (Twitter) link */
+  links: z
+    .array(linkSchema)
+    .max(2)
+    .optional()
+    .refine(
+      (links) => {
+        if (!links) return true;
+        const types = links.map((l) => l.type);
+        if (new Set(types).size !== types.length) return false;
+        for (const l of links) {
+          if (l.type === "twitter") {
+            const host = new URL(l.url).hostname.toLowerCase().replace(/^www\./, "");
+            if (host !== "x.com" && host !== "twitter.com") return false;
+          }
+        }
+        return true;
+      },
+      { message: "only one website link and one x.com link are allowed" }
+    ),
 });
 
 export type LinkInput = z.infer<typeof linkSchema>;
