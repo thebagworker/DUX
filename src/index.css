@@ -6,11 +6,4 @@ body {
   @apply bg-bg text-ink antialiased;
 }
 
-/* harmonize wallet-adapter button with the black-on-white theme */
-.wallet-adapter-button {
-  border-radius: 12px !important;
-}
-.wallet-adapter-button-trigger {
-  background: #111111 !important;
-  color: #ffffff !important;
-}
+

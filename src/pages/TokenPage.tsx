@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import bs58 from "bs58";
 import { API_BASE } from "../lib/config";
+import { useWallet, WalletButton } from "../components/WalletProviders";
 import { LINK_TYPES, shortenAddress, type TokenLink, type TokenProfile } from "../lib/types";
 
 export default function TokenPage() {
   const { address = "" } = useParams();
-  const { publicKey, signMessage, connected } = useWallet();
+  const { address: walletAddress, signMessage, connected } = useWallet();
 
   const [profile, setProfile] = useState<TokenProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,11 +49,11 @@ export default function TokenPage() {
   }, [loadProfile]);
 
   async function verify() {
-    if (!publicKey || !signMessage) return;
+    if (!walletAddress) return;
     setVerifying(true);
     setMsg(null);
     try {
-      const wallet = publicKey.toBase58();
+      const wallet = walletAddress;
       const nonceRes = await fetch(`${API_BASE}/auth/nonce`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -131,7 +130,7 @@ export default function TokenPage() {
             Solana
           </span>
         </div>
-        <WalletMultiButton />
+        <WalletButton />
       </div>
 
       {/* live preview */}
@@ -188,7 +187,7 @@ export default function TokenPage() {
           </p>
           <button
             onClick={verify}
-            disabled={!connected || !signMessage || verifying}
+            disabled={!connected || verifying}
             className="rounded-xl bg-accent px-6 py-3 font-bold text-white transition hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             {verifying
