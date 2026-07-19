@@ -14,6 +14,12 @@ export default {
         accent: "#111111",
         "accent-dark": "#333333",
         danger: "#d92d20",
+        up: "#16a34a",
+        "up-soft": "#dcfce7",
+        down: "#dc2626",
+        "down-soft": "#fee2e2",
+        brand: "#6d5efc",
+        "brand-soft": "#eef0ff",
       },
       fontFamily: {
         mono: ["ui-monospace", "SF Mono", "Menlo", "Consolas", "monospace"],
@@ -27,10 +33,15 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
       },
       animation: {
         flash: "flash-border 4s ease-out",
         "pulse-dot": "pulse-dot 1.6s ease-in-out infinite",
+        marquee: "marquee 40s linear infinite",
       },
     },
   },

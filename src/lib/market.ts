@@ -1,0 +1,216 @@
+/**
+ * Live market data for a Solana token.
+ *
+ * Profiles (banner/description/links) come from the DUX backend. Trading data
+ * — price, liquidity, market cap, buys/sells, candles and recent trades — is
+ * pulled from free, public, key-less sources so any token works out of the box:
+ *
+ *   - Dexscreener token API  → aggregate pair stats
+ *   - GeckoTerminal API      → OHLCV candles + individual recent trades
+ *
+ * Everything here is read-only and safe to call from the browser.
+ */
+
+const DEXSCREENER_BASE = "https://api.dexscreener.com/latest/dex";
+const GECKOTERMINAL_BASE = "https://api.geckoterminal.com/api/v2";
+const NETWORK = "solana";
+
+export interface TxnBuckets {
+  buys: number;
+  sells: number;
+}
+
+export interface MarketPair {
+  pairAddress: string;
+  dexId: string;
+  url: string;
+  baseSymbol: string;
+  baseName: string;
+  quoteSymbol: string;
+  imageUrl: string | null;
+  priceUsd: number;
+  priceNative: number;
+  priceChange: { m5: number; h1: number; h6: number; h24: number };
+  txns: { m5: TxnBuckets; h1: TxnBuckets; h6: TxnBuckets; h24: TxnBuckets };
+  volume: { m5: number; h1: number; h6: number; h24: number };
+  liquidityUsd: number;
+  fdv: number;
+  marketCap: number;
+  pairCreatedAt: number | null;
+}
+
+export interface Trade {
+  id: string;
+  kind: "buy" | "sell";
+  amountUsd: number;
+  baseAmount: number;
+  quoteAmount: number;
+  priceUsd: number;
+  wallet: string;
+  txHash: string;
+  timestamp: number; // unix seconds
+}
+
+function toNumber(value: unknown): number {
+  const n = typeof value === "string" ? parseFloat(value) : (value as number);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Fetch the deepest (most liquid) Solana pair for a token from Dexscreener. */
+export async function fetchMarketPair(tokenAddress: string): Promise<MarketPair | null> {
+  const res = await fetch(`${DEXSCREENER_BASE}/tokens/${tokenAddress}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  const body = await res.json();
+  const pairs: any[] = Array.isArray(body?.pairs) ? body.pairs : [];
+  const solanaPairs = pairs.filter((p) => p?.chainId === NETWORK);
+  if (solanaPairs.length === 0) return null;
+
+  const best = solanaPairs.reduce((a, b) =>
+    toNumber(b?.liquidity?.usd) > toNumber(a?.liquidity?.usd) ? b : a
+  );
+
+  return {
+    pairAddress: best.pairAddress,
+    dexId: best.dexId ?? "",
+    url: best.url ?? "",
+    baseSymbol: best.baseToken?.symbol ?? "TOKEN",
+    baseName: best.baseToken?.name ?? "Unknown token",
+    quoteSymbol: best.quoteToken?.symbol ?? "SOL",
+    imageUrl: best.info?.imageUrl ?? null,
+    priceUsd: toNumber(best.priceUsd),
+    priceNative: toNumber(best.priceNative),
+    priceChange: {
+      m5: toNumber(best.priceChange?.m5),
+      h1: toNumber(best.priceChange?.h1),
+      h6: toNumber(best.priceChange?.h6),
+      h24: toNumber(best.priceChange?.h24),
+    },
+    txns: {
+      m5: { buys: toNumber(best.txns?.m5?.buys), sells: toNumber(best.txns?.m5?.sells) },
+      h1: { buys: toNumber(best.txns?.h1?.buys), sells: toNumber(best.txns?.h1?.sells) },
+      h6: { buys: toNumber(best.txns?.h6?.buys), sells: toNumber(best.txns?.h6?.sells) },
+      h24: { buys: toNumber(best.txns?.h24?.buys), sells: toNumber(best.txns?.h24?.sells) },
+    },
+    volume: {
+      m5: toNumber(best.volume?.m5),
+      h1: toNumber(best.volume?.h1),
+      h6: toNumber(best.volume?.h6),
+      h24: toNumber(best.volume?.h24),
+    },
+    liquidityUsd: toNumber(best.liquidity?.usd),
+    fdv: toNumber(best.fdv),
+    marketCap: toNumber(best.marketCap),
+    pairCreatedAt: best.pairCreatedAt ? Number(best.pairCreatedAt) : null,
+  };
+}
+
+/**
+ * Reconstruct a lightweight price trend for a sparkline using only the data
+ * Dexscreener already returns (one request per token, no extra API calls).
+ * Each priceChange bucket is the trailing % move ending "now", so we can walk
+ * backwards to approximate the price at each checkpoint.
+ */
+export function sparkPointsFromPair(pair: MarketPair): number[] {
+  const now = pair.priceUsd;
+  const { h24, h6, h1, m5 } = pair.priceChange;
+  const at = (changePct: number) => now / (1 + changePct / 100);
+  return [at(h24), at(h6), at(h1), at(m5), now].filter(
+    (n) => Number.isFinite(n) && n > 0
+  );
+}
+
+/** Fetch the most recent individual trades for a pool. */
+export async function fetchTrades(pairAddress: string): Promise<Trade[]> {
+  const url = `${GECKOTERMINAL_BASE}/networks/${NETWORK}/pools/${pairAddress}/trades`;
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: { Accept: "application/json;version=20230302" },
+  });
+  if (!res.ok) return [];
+  const body = await res.json();
+  const rows: any[] = Array.isArray(body?.data) ? body.data : [];
+
+  return rows.map((row) => {
+    const a = row.attributes ?? {};
+    const kind: "buy" | "sell" = a.kind === "sell" ? "sell" : "buy";
+    return {
+      id: String(row.id ?? a.tx_hash ?? Math.random()),
+      kind,
+      amountUsd: toNumber(a.volume_in_usd),
+      baseAmount: toNumber(kind === "buy" ? a.to_token_amount : a.from_token_amount),
+      quoteAmount: toNumber(kind === "buy" ? a.from_token_amount : a.to_token_amount),
+      priceUsd: toNumber(kind === "buy" ? a.price_to_in_usd : a.price_from_in_usd),
+      wallet: a.tx_from_address ?? "",
+      txHash: a.tx_hash ?? "",
+      timestamp: a.block_timestamp ? Math.floor(new Date(a.block_timestamp).getTime() / 1000) : 0,
+    };
+  });
+}
+
+/* ---------------------------------------------------------------------------
+ * Formatting helpers — small, dependency-free, shared across the dashboard.
+ * ------------------------------------------------------------------------- */
+
+const SUBSCRIPTS = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"];
+
+function toSubscript(n: number): string {
+  return String(n)
+    .split("")
+    .map((d) => SUBSCRIPTS[Number(d)] ?? d)
+    .join("");
+}
+
+/**
+ * Format a USD price the way trading terminals do. Tiny prices collapse their
+ * leading zeros into a subscript count, e.g. 0.0000567 → "$0.0₄567".
+ */
+export function formatPriceUsd(price: number): string {
+  if (!Number.isFinite(price) || price <= 0) return "$0.00";
+  if (price >= 1) return `$${price.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  if (price >= 0.001) return `$${price.toFixed(4)}`;
+
+  const decimals = price.toExponential().split("e-")[1];
+  const leadingZeros = Number(decimals) - 1;
+  const significant = Math.round(price * 10 ** (leadingZeros + 4))
+    .toString()
+    .replace(/0+$/, "")
+    .padStart(1, "0");
+  return `$0.0${toSubscript(leadingZeros)}${significant}`;
+}
+
+/** Compact money: 1_234_567 → "$1.23M". */
+export function formatUsdCompact(value: number): string {
+  if (!Number.isFinite(value)) return "$0";
+  const abs = Math.abs(value);
+  if (abs >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
+  return `$${value.toFixed(2)}`;
+}
+
+/** Compact plain number: 1_234_567 → "1.23M". */
+export function formatCompact(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  const abs = Math.abs(value);
+  if (abs >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
+  return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+/** Signed percentage: 12.34 → "+12.34%". */
+export function formatPercent(value: number): string {
+  if (!Number.isFinite(value)) return "0.00%";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+export function relTimeShort(timestampSeconds: number): string {
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - timestampSeconds));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}

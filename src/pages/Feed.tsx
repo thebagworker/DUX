@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { API_BASE } from "../lib/config";
 import { relTime, shortenAddress, type TokenProfile } from "../lib/types";
+import {
+  fetchMarketPair,
+  formatPercent,
+  formatPriceUsd,
+  sparkPointsFromPair,
+  type MarketPair,
+} from "../lib/market";
+import Sparkline from "../components/token/Sparkline";
 
 const POLL_MS = 5000;
 
@@ -10,8 +18,10 @@ export default function Feed() {
   const [lastFetch, setLastFetch] = useState<Date | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [, forceTick] = useState(0);
+  const [markets, setMarkets] = useState<Record<string, MarketPair | null>>({});
   const known = useRef<Map<string, string>>(new Map());
   const first = useRef(true);
+  const fetchedMarkets = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let stop = false;
@@ -51,6 +61,23 @@ export default function Feed() {
       clearInterval(tick);
     };
   }, []);
+
+  // Lazily pull live market data for each token that shows up in the feed.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (const p of profiles) {
+        if (fetchedMarkets.current.has(p.tokenAddress)) continue;
+        fetchedMarkets.current.add(p.tokenAddress);
+        const pair = await fetchMarketPair(p.tokenAddress);
+        if (cancelled) return;
+        setMarkets((m) => ({ ...m, [p.tokenAddress]: pair }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profiles]);
 
   return (
     <div>
@@ -103,6 +130,24 @@ export default function Feed() {
                 )}
                 <span className="ml-auto text-xs text-ink-dim">{relTime(p.updatedAt)}</span>
               </div>
+              {(() => {
+                const pair = markets[p.tokenAddress];
+                if (!pair) return null;
+                const up = pair.priceChange.h24 >= 0;
+                return (
+                  <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg border border-line bg-bg-soft px-2.5 py-2">
+                    <div>
+                      <p className="font-mono text-sm font-semibold text-ink">
+                        {formatPriceUsd(pair.priceUsd)}
+                      </p>
+                      <span className={`text-[11px] font-semibold ${up ? "text-up" : "text-down"}`}>
+                        {formatPercent(pair.priceChange.h24)} · 24h
+                      </span>
+                    </div>
+                    <Sparkline points={sparkPointsFromPair(pair)} up={up} />
+                  </div>
+                );
+              })()}
               {p.description && (
                 <p className="mt-2 line-clamp-2 text-[13px] text-ink-dim">{p.description}</p>
               )}
