@@ -4,3 +4,4 @@ dist/
 .pp_key
 scripts/probe-*.mjs
 scripts/inspect-*.mjs
+.vercel

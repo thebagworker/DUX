@@ -13,7 +13,7 @@ function buildEmbedSnippet(embedUrl: string, symbol: string): string {
     '<style>#dux-embed{position:relative;width:100%;padding-bottom:125%;}',
     "@media(min-width:1400px){#dux-embed{padding-bottom:65%;}}",
     "#dux-embed iframe{position:absolute;width:100%;height:100%;top:0;left:0;border:0;}</style>",
-    `<div id="dux-embed"><iframe src="${embedUrl}" title="DUX ${symbol} chart"></iframe></div>`,
+    `<div id="dux-embed"><iframe src="${embedUrl}" title="MEMIPEDE DEX ${symbol} chart"></iframe></div>`,
   ].join("\n");
 }
 
@@ -77,7 +77,7 @@ export default function EmbedChartDialog({ address, symbol = "token", onClose }:
           </button>
         </div>
         <p className="mb-4 text-sm text-ink-dim">
-          Paste this snippet into your website to share a live, responsive DUX chart. It scales to
+          Paste this snippet into your website to share a live, responsive MEMIPEDE DEX chart. It scales to
           fit whatever container you drop it in.
         </p>
 
@@ -106,7 +106,7 @@ export default function EmbedChartDialog({ address, symbol = "token", onClose }:
             <iframe
               key={embedUrl}
               src={embedUrl}
-              title="DUX chart preview"
+              title="MEMIPEDE DEX chart preview"
               className="block h-72 w-full border-0"
             />
           </div>

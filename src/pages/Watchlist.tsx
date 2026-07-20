@@ -257,7 +257,7 @@ export default function Watchlist() {
               />
               <p className="mt-3 flex items-center gap-1.5 text-[11px] text-ink-dim">
                 <BellIcon className="h-3 w-3" />
-                Alerts run while DUX is open and notify you in-app and via your browser.
+                Alerts run while MEMIPEDE DEX is open and notify you in-app and via your browser.
               </p>
             </div>
           </div>

@@ -293,13 +293,13 @@ function WalletPicker({
       >
         {/* DUX-branded header */}
         <div className="relative flex items-center gap-3 border-b border-line bg-gradient-to-br from-brand-soft/70 to-transparent p-5">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-bg-soft ring-1 ring-line">
-            <img src="/logo.png" alt="" className="h-7 w-7 dark:hidden" />
-            <img src="/logo-dark.png" alt="" className="hidden h-7 w-7 dark:block" />
+          <span className="flex h-11 items-center rounded-xl bg-bg-soft px-3 ring-1 ring-line">
+            <img src="/logo.png" alt="" className="h-6 w-auto dark:hidden" />
+            <img src="/logo-dark.png" alt="" className="hidden h-6 w-auto dark:block" />
           </span>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">
-              Connect to DUX
+              Connect to MEMIPEDE DEX
             </p>
             <h3 className="text-lg font-bold leading-tight text-ink">Choose a wallet</h3>
           </div>
@@ -361,7 +361,7 @@ function WalletPicker({
 
           <p className="mt-4 flex items-start gap-1.5 text-[11px] text-ink-dim">
             <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />
-            DUX only reads balances and asks you to sign a message — never a transaction. Switch
+            MEMIPEDE DEX only reads balances and asks you to sign a message — never a transaction. Switch
             accounts inside your wallet extension.
           </p>
         </div>

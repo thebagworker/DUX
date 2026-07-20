@@ -236,7 +236,7 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-brand" />
-            has DUX enhanced info
+            has MEMIPEDE DEX enhanced info
           </span>
         </div>
       </div>
@@ -328,17 +328,17 @@ function DuxBadge({ dux }: { dux: DuxProfileStatus | undefined }) {
   if (!dux.hasProfile) {
     return (
       <span className="shrink-0 rounded-full border border-line px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-dim">
-        No DUX
+        No info
       </span>
     );
   }
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-soft px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand"
-      title={dux.updatedAt ? `Enhanced info updated ${relTime(dux.updatedAt)}` : "Has DUX enhanced info"}
+      title={dux.updatedAt ? `Enhanced info updated ${relTime(dux.updatedAt)}` : "Has MEMIPEDE DEX enhanced info"}
     >
       <span className="inline-block h-1.5 w-1.5 rounded-full bg-brand" />
-      DUX
+      memi
       {dux.updatedAt && <span className="font-medium normal-case">· {relTime(dux.updatedAt)}</span>}
     </span>
   );

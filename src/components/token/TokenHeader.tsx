@@ -110,8 +110,12 @@ export default function TokenHeader({
         </div>
       </div>
 
-      <div className={`relative flex items-center gap-4 ${hasBanner ? "mt-auto" : ""}`}>
-        <div className="text-right">
+      <div
+        className={`relative flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-end ${
+          hasBanner ? "mt-auto" : ""
+        }`}
+      >
+        <div className="text-left sm:text-right">
           <p
             className={`font-mono text-2xl font-bold leading-none ${
               hasBanner ? "text-white" : "text-ink"

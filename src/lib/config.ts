@@ -15,3 +15,7 @@ export const API_BASE: string =
 export const BROWSER_RPC: string =
   (import.meta.env.VITE_SOLANA_RPC_URL as string | undefined) ||
   "https://api.mainnet-beta.solana.com";
+
+/** The project's own token — the MEMIPEDE DEX mint this site is branded around. */
+export const MEMIPEDE_CONTRACT_ADDRESS =
+  "6LLNiWXRZp8hn5oTFTHEo8ERbJS3QJfHSKhnTCqipump";

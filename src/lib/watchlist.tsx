@@ -325,7 +325,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
       if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
         try {
-          const notification = new Notification(`DUX alert · ${title}`, {
+          const notification = new Notification(`MEMIPEDE DEX alert · ${title}`, {
             body,
             icon: "/logo.png",
             tag: alert.id,

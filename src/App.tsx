@@ -6,6 +6,7 @@ import ThemeToggle from "./components/ThemeToggle";
 import ToastHost from "./components/ToastHost";
 import WalletProviders, { WalletButton } from "./components/WalletProviders";
 import GlobalSearch from "./components/GlobalSearch";
+import ContractAddress from "./components/ContractAddress";
 import Landing from "./pages/Landing";
 import TokenPage from "./pages/TokenPage";
 import Feed from "./pages/Feed";
@@ -21,7 +22,7 @@ const NAV_LINKS = [
   { to: "/docs", label: "API Docs" },
 ] as const;
 
-const GITHUB_URL = "https://github.com/Fearonchain/DUX";
+const GITHUB_URL = "https://github.com/thebagworker/DUX";
 
 /** Small pill showing how many tokens are on the watchlist. */
 function WatchlistBadge({ count }: { count: number }) {
@@ -92,10 +93,9 @@ function MobileNav() {
           />
           <div className="absolute right-0 top-0 flex h-full w-72 max-w-[85%] animate-fade-in flex-col border-l border-line bg-card shadow-2xl shadow-black/25">
             <div className="flex items-center justify-between border-b border-line px-4 py-4">
-              <span className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
-                <img src="/logo.png" alt="" className="h-7 w-7 dark:hidden" />
-                <img src="/logo-dark.png" alt="" className="hidden h-7 w-7 dark:block" />
-                DUX
+              <span className="flex items-center">
+                <img src="/logo.png" alt="MEMIPEDE DEX" className="h-8 w-auto dark:hidden" />
+                <img src="/logo-dark.png" alt="MEMIPEDE DEX" className="hidden h-8 w-auto dark:block" />
               </span>
               <button
                 type="button"
@@ -143,13 +143,9 @@ function SiteChrome() {
       </div>
       <header className="border-b border-line">
         <div className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 py-4 sm:gap-4 sm:px-5">
-          <Link
-            to="/"
-            className="flex shrink-0 items-center gap-2 font-display text-lg font-bold tracking-tight"
-          >
-            <img src="/logo.png" alt="DUX logo" className="h-8 w-8 dark:hidden" />
-            <img src="/logo-dark.png" alt="DUX logo" className="hidden h-8 w-8 dark:block" />
-            DUX
+          <Link to="/" className="flex shrink-0 items-center" aria-label="MEMIPEDE DEX home">
+            <img src="/logo.png" alt="MEMIPEDE DEX" className="h-9 w-auto dark:hidden" />
+            <img src="/logo-dark.png" alt="MEMIPEDE DEX" className="hidden h-9 w-auto dark:block" />
           </Link>
           <div className="flex flex-1 justify-center">
             <GlobalSearch />
@@ -180,10 +176,13 @@ function SiteChrome() {
       </main>
       <footer className="mt-12 border-t border-line">
         <div className="mx-auto w-full max-w-7xl px-5 py-6 text-center text-[13px] text-ink-dim">
+          <div className="mb-4 flex justify-center">
+            <ContractAddress />
+          </div>
           <p>Free &amp; open source. No fees, ever. Verification is fully on-chain.</p>
           <p className="mt-1.5 text-[11px]">
-            DUX is an independent community project and is not affiliated with, endorsed by, or
-            connected to DEX Screener, Inc. ("Dexscreener"). All trademarks are the property of
+            MEMIPEDE DEX is an independent community project and is not affiliated with, endorsed by,
+            or connected to DEX Screener, Inc. ("Dexscreener"). All trademarks are the property of
             their respective owners. This site provides token metadata submitted by verified token
             authorities/holders; nothing here is financial advice.
           </p>

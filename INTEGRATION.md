@@ -1,6 +1,6 @@
 # Integration Guide, for trading platforms (Axiom / Padre / GMGN-style)
 
-DUX exposes token profiles in the **same schema as Dexscreener's token-profiles API**. If you already render Dexscreener enhanced token info, integrating this source is a base-URL change plus a fallback.
+MEMIPEDE DEX exposes token profiles in the **same schema as Dexscreener's token-profiles API**. If you already render Dexscreener enhanced token info, integrating this source is a base-URL change plus a fallback.
 
 ## Endpoints
 

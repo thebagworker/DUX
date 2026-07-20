@@ -64,9 +64,9 @@ export default function EmbedChart() {
           target="_blank"
           rel="noopener noreferrer"
           className="flex min-w-0 items-center gap-2"
-          title="Open on DUX"
+          title="Open on MEMIPEDE DEX"
         >
-          <img src="/logo.png" alt="DUX" className="h-5 w-5 shrink-0" />
+          <img src="/logo.png" alt="MEMIPEDE DEX" className="h-5 w-auto shrink-0" />
           <span className="truncate text-sm font-bold">
             {pair?.baseSymbol ?? shortenAddress(address)}
           </span>
@@ -121,7 +121,7 @@ export default function EmbedChart() {
           rel="noopener noreferrer"
           className="font-semibold transition hover:underline"
         >
-          Powered by DUX
+          Powered by MEMIPEDE DEX
         </a>
         <span>Chart data via Dexscreener</span>
       </div>

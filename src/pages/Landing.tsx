@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RecentTokensMarquee from "../components/RecentTokensMarquee";
+import ContractAddress from "../components/ContractAddress";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -49,6 +50,10 @@ export default function Landing() {
         </button>
       </div>
       {err && <p className="mt-3 text-danger">{err}</p>}
+
+      <div className="mt-6 flex justify-center">
+        <ContractAddress full className="shadow-sm" />
+      </div>
 
       <div className="mt-10">
         <RecentTokensMarquee />
