@@ -79,7 +79,7 @@ function AddTokenCta({ onNavigate }: { onNavigate?: () => void }) {
     <Link
       to="/add"
       onClick={onNavigate}
-      className="flex items-center justify-center gap-2 rounded-xl bg-brand-strong px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-110"
+      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand-soft"
     >
       <PlusFlameIcon className="h-[18px] w-[18px] shrink-0" />
       Add your token
@@ -111,13 +111,11 @@ function Sidebar() {
           <Logo />
         </Link>
       </div>
-      <div className="px-3 pb-3">
-        <AddTokenCta />
-      </div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3">
         {NAV_ITEMS.map((item) => (
           <NavRow key={item.to} item={item} />
         ))}
+        <AddTokenCta />
       </nav>
       <div className="space-y-3 border-t border-line p-3">
         <GithubRow />
@@ -183,12 +181,10 @@ function MobileDrawer() {
                 </button>
               </div>
             <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-              <div className="pb-2">
-                <AddTokenCta onNavigate={() => setOpen(false)} />
-              </div>
               {NAV_ITEMS.map((item) => (
                 <NavRow key={item.to} item={item} onNavigate={() => setOpen(false)} />
               ))}
+              <AddTokenCta onNavigate={() => setOpen(false)} />
               <GithubRow />
             </nav>
               {TOKEN_CONTRACT_ADDRESS && (

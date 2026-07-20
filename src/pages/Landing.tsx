@@ -60,13 +60,6 @@ export default function Landing() {
       </div>
       {err && <p className="mt-3 text-danger">{err}</p>}
 
-      <p className="mt-4 text-sm text-ink-dim">
-        Own a token?{" "}
-        <Link to="/add" className="font-semibold text-brand hover:underline">
-          Add it to Torch in a minute →
-        </Link>
-      </p>
-
       {TOKEN_CONTRACT_ADDRESS && (
         <div className="mt-6 flex justify-center">
           <ContractAddress full className="shadow-sm" />
