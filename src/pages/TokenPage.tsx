@@ -46,12 +46,31 @@ export default function TokenPage() {
   // it only when they actually want to set one.
   const [alertsOpen, setAlertsOpen] = useState(false);
 
+  // Basic client-side sanity check so garbage in the URL renders a friendly
+  // message instead of firing doomed API calls for an obviously-invalid mint.
+  const isValidAddress = useMemo(
+    () => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address),
+    [address]
+  );
+
   const bannerPreview = useMemo(
     () => (bannerFile ? URL.createObjectURL(bannerFile) : (profile?.header ?? null)),
     [bannerFile, profile]
   );
 
+  function clearProfileFields() {
+    setProfile(null);
+    setDescription("");
+    setWebsiteUrl("");
+    setTwitterUrl("");
+  }
+
   const loadProfile = useCallback(async () => {
+    if (!isValidAddress) {
+      clearProfileFields();
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/token-profiles/solana/${address}`, { cache: "no-store" });
@@ -63,16 +82,29 @@ export default function TokenPage() {
         setWebsiteUrl(ls.find((l) => l.type === "website")?.url ?? "");
         setTwitterUrl(ls.find((l) => l.type === "twitter")?.url ?? "");
       } else {
-        setProfile(null);
+        clearProfileFields();
       }
+    } catch {
+      clearProfileFields();
     } finally {
       setLoading(false);
     }
-  }, [address]);
+  }, [address, isValidAddress]);
 
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  // Reset all token-scoped edit/verification state when switching tokens so a
+  // previous token's edit session can never bleed into a different mint.
+  useEffect(() => {
+    setEditToken(null);
+    setRole(null);
+    setMsg(null);
+    setVerifying(false);
+    setBannerFile(null);
+    if (bannerInput.current) bannerInput.current.value = "";
+  }, [address]);
 
   // Live market data: pair stats + recent trades, refreshed on an interval.
   useEffect(() => {
@@ -80,6 +112,10 @@ export default function TokenPage() {
     setMarketLoading(true);
     setPair(null);
     setTrades([]);
+    if (!isValidAddress) {
+      setMarketLoading(false);
+      return;
+    }
 
     async function loadMarket(initial: boolean) {
       const p = await fetchMarketPair(address);
@@ -98,7 +134,7 @@ export default function TokenPage() {
       stop = true;
       clearInterval(iv);
     };
-  }, [address]);
+  }, [address, isValidAddress]);
 
   async function verify() {
     if (!walletAddress) return;
@@ -217,6 +253,23 @@ export default function TokenPage() {
 
   const inputCls =
     "rounded-lg border border-line bg-bg-soft px-3 py-2.5 text-sm outline-none focus:border-brand";
+
+  if (!isValidAddress) {
+    return (
+      <div className="py-16 text-center">
+        <h1 className="text-2xl font-bold">Invalid token address</h1>
+        <p className="mx-auto mt-2 max-w-md text-ink-dim">
+          That doesn't look like a valid Solana mint address. Double-check the link and try again.
+        </p>
+        <Link
+          to="/"
+          className="mt-5 inline-block rounded-xl bg-brand-strong px-5 py-2.5 font-bold text-white transition hover:brightness-110"
+        >
+          Back to home
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 pb-10">

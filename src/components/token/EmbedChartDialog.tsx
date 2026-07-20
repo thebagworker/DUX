@@ -10,10 +10,10 @@ interface EmbedChartDialogProps {
 /** Build the responsive, self-contained iframe snippet integrators paste in. */
 function buildEmbedSnippet(embedUrl: string, symbol: string): string {
   return [
-    '<style>#dux-embed{position:relative;width:100%;padding-bottom:125%;}',
-    "@media(min-width:1400px){#dux-embed{padding-bottom:65%;}}",
-    "#dux-embed iframe{position:absolute;width:100%;height:100%;top:0;left:0;border:0;}</style>",
-    `<div id="dux-embed"><iframe src="${embedUrl}" title="Torch ${symbol} chart"></iframe></div>`,
+    '<style>#torch-embed{position:relative;width:100%;padding-bottom:125%;}',
+    "@media(min-width:1400px){#torch-embed{padding-bottom:65%;}}",
+    "#torch-embed iframe{position:absolute;width:100%;height:100%;top:0;left:0;border:0;}</style>",
+    `<div id="torch-embed"><iframe src="${embedUrl}" title="Torch ${symbol} chart"></iframe></div>`,
   ].join("\n");
 }
 

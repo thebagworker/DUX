@@ -230,6 +230,24 @@ function Footer() {
   );
 }
 
+function NotFound() {
+  return (
+    <div className="py-16 text-center">
+      <p className="font-display text-5xl font-bold text-brand">404</p>
+      <h1 className="mt-3 text-2xl font-bold">Page not found</h1>
+      <p className="mx-auto mt-2 max-w-md text-ink-dim">
+        The page you're looking for doesn't exist or has moved.
+      </p>
+      <Link
+        to="/"
+        className="mt-5 inline-block rounded-xl bg-brand-strong px-5 py-2.5 font-bold text-white transition hover:brightness-110"
+      >
+        Back to home
+      </Link>
+    </div>
+  );
+}
+
 /** Full Torch app shell (compliance strip + sidebar + top bar + footer). */
 function SiteChrome() {
   return (
@@ -266,6 +284,7 @@ export default function App() {
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/watchlist" element={<Watchlist />} />
               <Route path="/docs" element={<Docs />} />
+              <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
           <ToastHost />

@@ -59,6 +59,8 @@ function matchesQuery(
 export default function Feed() {
   const [profiles, setProfiles] = useState<TokenProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [lastFetch, setLastFetch] = useState<Date | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [, forceTick] = useState(0);
@@ -81,8 +83,13 @@ export default function Feed() {
     async function poll() {
       try {
         const res = await fetch(`${API_BASE}/token-profiles/recent-updates/v1`, { cache: "no-store" });
-        if (!res.ok || stop) return;
+        if (stop) return;
+        if (!res.ok) {
+          setError(true);
+          return;
+        }
         const data: TokenProfile[] = await res.json();
+        setError(false);
 
         const changed = new Set<string>();
         if (!first.current) {
@@ -100,7 +107,7 @@ export default function Feed() {
           setTimeout(() => setFresh(new Set()), 4000);
         }
       } catch {
-        /* transient error, next poll retries */
+        if (!stop) setError(true);
       } finally {
         if (!stop) setLoading(false);
       }
@@ -114,7 +121,7 @@ export default function Feed() {
       clearInterval(iv);
       clearInterval(tick);
     };
-  }, []);
+  }, [retry]);
 
   // Lazily pull live market data for the feed in batched requests (up to 30
   // tokens per Dexscreener call) rather than one request per token, so a full
@@ -197,6 +204,23 @@ export default function Feed() {
 
       {loading && profiles.length === 0 ? (
         <FeedSkeleton viewMode={viewMode} />
+      ) : error && profiles.length === 0 ? (
+        <div className="mt-5 rounded-xl border border-line bg-card p-8 text-center">
+          <p className="font-semibold text-ink">Couldn't reach the feed</p>
+          <p className="mt-1 text-sm text-ink-dim">
+            The API may be temporarily unavailable. Please try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              setRetry((n) => n + 1);
+            }}
+            className="mt-4 rounded-lg border border-line bg-bg-soft px-3 py-1.5 text-sm font-semibold text-ink transition hover:border-accent"
+          >
+            Retry
+          </button>
+        </div>
       ) : profiles.length === 0 ? (
         <div className="mt-5 rounded-xl border border-line bg-card p-5 text-center text-ink-dim">
           No updates yet. As soon as someone updates their token info, it shows up here.
