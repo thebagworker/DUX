@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import RecentTokensMarquee from "../components/RecentTokensMarquee";
 import ContractAddress from "../components/ContractAddress";
 import { FlameMark } from "../components/Logo";
@@ -60,6 +60,13 @@ export default function Landing() {
       </div>
       {err && <p className="mt-3 text-danger">{err}</p>}
 
+      <p className="mt-4 text-sm text-ink-dim">
+        Own a token?{" "}
+        <Link to="/add" className="font-semibold text-brand hover:underline">
+          Add it to Torch in a minute →
+        </Link>
+      </p>
+
       {TOKEN_CONTRACT_ADDRESS && (
         <div className="mt-6 flex justify-center">
           <ContractAddress full className="shadow-sm" />
@@ -92,6 +99,16 @@ export default function Landing() {
             <p className="text-sm text-ink-dim">{s.d}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-6 flex justify-center">
+        <Link
+          to="/add"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-strong px-6 py-3 font-bold text-white transition hover:brightness-110"
+        >
+          <FlameMark className="h-4 w-4" />
+          Add your token now
+        </Link>
       </div>
 
       {/* Burn the paywall: why Torch exists */}

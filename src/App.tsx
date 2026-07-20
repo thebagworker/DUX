@@ -12,6 +12,7 @@ import Logo from "./components/Logo";
 import { TOKEN_CONTRACT_ADDRESS } from "./lib/config";
 import Landing from "./pages/Landing";
 import TokenPage from "./pages/TokenPage";
+import AddToken from "./pages/AddToken";
 import Feed from "./pages/Feed";
 import Docs from "./pages/Docs";
 import Watchlist from "./pages/Watchlist";
@@ -72,6 +73,20 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
   );
 }
 
+/** Bright, always-visible call to action to launch the "Add your token" wizard. */
+function AddTokenCta({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <Link
+      to="/add"
+      onClick={onNavigate}
+      className="flex items-center justify-center gap-2 rounded-xl bg-brand-strong px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-110"
+    >
+      <PlusFlameIcon className="h-[18px] w-[18px] shrink-0" />
+      Add your token
+    </Link>
+  );
+}
+
 /** GitHub row (external link) styled to match the nav rows. */
 function GithubRow() {
   return (
@@ -95,6 +110,9 @@ function Sidebar() {
         <Link to="/" aria-label="Torch home">
           <Logo />
         </Link>
+      </div>
+      <div className="px-3 pb-3">
+        <AddTokenCta />
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3">
         {NAV_ITEMS.map((item) => (
@@ -164,12 +182,15 @@ function MobileDrawer() {
                   </svg>
                 </button>
               </div>
-              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-                {NAV_ITEMS.map((item) => (
-                  <NavRow key={item.to} item={item} onNavigate={() => setOpen(false)} />
-                ))}
-                <GithubRow />
-              </nav>
+            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+              <div className="pb-2">
+                <AddTokenCta onNavigate={() => setOpen(false)} />
+              </div>
+              {NAV_ITEMS.map((item) => (
+                <NavRow key={item.to} item={item} onNavigate={() => setOpen(false)} />
+              ))}
+              <GithubRow />
+            </nav>
               {TOKEN_CONTRACT_ADDRESS && (
                 <div className="border-t border-line p-3">
                   <ContractAddress className="w-full justify-center" />
@@ -285,6 +306,8 @@ export default function App() {
             {/* Everything else renders inside the full Torch app shell. */}
             <Route element={<SiteChrome />}>
               <Route path="/" element={<Landing />} />
+              <Route path="/add" element={<AddToken />} />
+              <Route path="/add/:address" element={<AddToken />} />
               <Route path="/token/:address" element={<TokenPage />} />
               <Route path="/feed" element={<Feed />} />
               <Route path="/portfolio" element={<Portfolio />} />
@@ -342,6 +365,15 @@ function BookIcon({ className }: IconProps) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H19v13H6a2 2 0 0 0-2 2z" />
       <path d="M4 19a2 2 0 0 1 2-2h13" />
+    </svg>
+  );
+}
+
+function PlusFlameIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v8M8 12h8" />
     </svg>
   );
 }

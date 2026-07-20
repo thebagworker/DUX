@@ -207,6 +207,16 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
               <p className="mt-1 text-sm text-ink-dim">
                 Try a different name, ticker, or paste a mint address.
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("/add");
+                }}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-strong px-4 py-2 text-sm font-bold text-white transition hover:brightness-110"
+              >
+                Add your token to Torch →
+              </button>
             </div>
           ) : !searching && items.length === 0 ? (
             <div className="px-3 py-10 text-center text-sm text-ink-dim">

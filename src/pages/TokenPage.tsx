@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import bs58 from "bs58";
 import { API_BASE } from "../lib/config";
 import { useWallet, WalletButton } from "../components/WalletProviders";
 import { shortenAddress, type TokenProfile } from "../lib/types";
+import { prepareBannerImage, saveTokenProfile, verifyTokenOwnership } from "../lib/tokenClaim";
 import { fetchMarketPair, fetchTrades, type MarketPair, type Trade } from "../lib/market";
 import TokenHeader from "../components/token/TokenHeader";
 import PriceChart from "../components/token/PriceChart";
@@ -141,75 +141,19 @@ export default function TokenPage() {
     setVerifying(true);
     setMsg(null);
     try {
-      const wallet = walletAddress;
-      const nonceRes = await fetch(`${API_BASE}/auth/nonce`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet, tokenAddress: address }),
+      const result = await verifyTokenOwnership({
+        wallet: walletAddress,
+        tokenAddress: address,
+        signMessage,
       });
-      if (!nonceRes.ok) throw new Error((await nonceRes.json()).error ?? "nonce request failed");
-      const { nonce, message } = await nonceRes.json();
-
-      const sig = await signMessage(new TextEncoder().encode(message));
-
-      const verifyRes = await fetch(`${API_BASE}/auth/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet, tokenAddress: address, nonce, signature: bs58.encode(sig) }),
-      });
-      const data = await verifyRes.json();
-      if (!verifyRes.ok) throw new Error(data.detail ?? data.error ?? "verification failed");
-      setEditToken(data.editToken);
-      setRole(data.role);
-      setMsg({ kind: "ok", text: `Verified (${data.role}). ${data.detail}` });
+      setEditToken(result.editToken);
+      setRole(result.role);
+      setMsg({ kind: "ok", text: `Verified (${result.role}). ${result.detail}` });
     } catch (e) {
       setMsg({ kind: "err", text: e instanceof Error ? e.message : String(e) });
     } finally {
       setVerifying(false);
     }
-  }
-
-  /**
-   * Convert any browser-readable image into a clean 1500x500 JPEG before
-   * upload (cover-crop). This makes huge photos, webp, etc. just work; the
-   * server still re-validates and re-encodes it.
-   */
-  async function prepareBanner(file: File): Promise<Blob> {
-    const bitmap = await createImageBitmap(file).catch(() => null);
-    let source: CanvasImageSource;
-    let sw: number;
-    let sh: number;
-    if (bitmap) {
-      source = bitmap;
-      sw = bitmap.width;
-      sh = bitmap.height;
-    } else {
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      await new Promise<void>((res, rej) => {
-        img.onload = () => res();
-        img.onerror = () => rej(new Error("Could not read this image file"));
-      });
-      source = img;
-      sw = img.naturalWidth;
-      sh = img.naturalHeight;
-    }
-    const TW = 1500;
-    const TH = 500;
-    const scale = Math.max(TW / sw, TH / sh);
-    const cw = TW / scale;
-    const ch = TH / scale;
-    const sx = (sw - cw) / 2;
-    const sy = (sh - ch) / 2;
-    const canvas = document.createElement("canvas");
-    canvas.width = TW;
-    canvas.height = TH;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Could not process the image");
-    ctx.drawImage(source, sx, sy, cw, ch, 0, 0, TW, TH);
-    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.86));
-    if (!blob) throw new Error("Could not process the image");
-    return blob;
   }
 
   async function save() {
@@ -220,26 +164,11 @@ export default function TokenPage() {
       const links: { type: string; url: string }[] = [];
       if (websiteUrl.trim()) links.push({ type: "website", url: websiteUrl.trim() });
       if (twitterUrl.trim()) links.push({ type: "twitter", url: twitterUrl.trim() });
-      const form = new FormData();
-      form.set(
-        "payload",
-        JSON.stringify({
-          description: description.trim() || null,
-          links,
-        })
-      );
-      if (bannerFile) {
-        const prepared = await prepareBanner(bannerFile);
-        form.set("banner", new File([prepared], "banner.jpg", { type: "image/jpeg" }));
-      }
-
-      const res = await fetch(`${API_BASE}/profile`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${editToken}` },
-        body: form,
+      await saveTokenProfile(editToken, {
+        description: description.trim() || null,
+        links,
+        bannerBlob: bannerFile ? await prepareBannerImage(bannerFile) : null,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail ?? data.error ?? "save failed");
       setMsg({ kind: "ok", text: "Saved. Live instantly via the API." });
       setBannerFile(null);
       if (bannerInput.current) bannerInput.current.value = "";
@@ -469,6 +398,12 @@ export default function TokenPage() {
                   "Connect wallet first"
                 )}
               </button>
+              <Link
+                to={`/add/${address}`}
+                className="mt-3 block text-center text-sm font-semibold text-brand hover:underline"
+              >
+                Prefer a guided step-by-step flow? →
+              </Link>
             </section>
           )}
 

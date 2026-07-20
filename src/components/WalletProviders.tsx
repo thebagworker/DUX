@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import Logo from "./Logo";
 
 /**
@@ -370,11 +371,45 @@ function WalletPicker({
 
 /* --- Header connect button ------------------------------------------------ */
 
-/** Connect button with a small menu when connected. */
+/** Connect button that becomes a profile dropdown once a wallet is linked. */
 export function WalletButton() {
-  const { address, connected, connecting, selectedWalletIcon, openPicker, disconnect } =
-    useWallet();
+  const {
+    address,
+    connected,
+    connecting,
+    selectedWallet,
+    selectedWalletIcon,
+    openPicker,
+    disconnect,
+  } = useWallet();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Close the dropdown on an outside click or Escape press.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuOpen]);
+
+  // Reset the "Copied" affordance shortly after it shows.
+  useEffect(() => {
+    if (!justCopied) return;
+    const timer = window.setTimeout(() => setJustCopied(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [justCopied]);
 
   if (!connected) {
     return (
@@ -396,37 +431,109 @@ export function WalletButton() {
   }
 
   const short = address ? `${address.slice(0, 4)}..${address.slice(-4)}` : "";
+
+  const copyAddress = () => {
+    if (!address) return;
+    navigator.clipboard
+      ?.writeText(address)
+      .then(() => setJustCopied(true))
+      .catch(() => {});
+  };
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setMenuOpen((open) => !open)}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
         className="flex items-center gap-2 rounded-xl bg-brand-strong px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-110"
       >
         {selectedWalletIcon && (
           <img src={selectedWalletIcon} alt="" className="h-4 w-4 rounded" />
         )}
-        {short}
+        <span className="font-mono">{short}</span>
+        <ChevronDownIcon
+          className={`h-3.5 w-3.5 transition-transform ${menuOpen ? "rotate-180" : ""}`}
+        />
       </button>
+
       {menuOpen && (
-        <div className="absolute right-0 z-50 mt-2 w-44 rounded-xl border border-line bg-card p-1.5 shadow-lg">
-          <button
-            onClick={() => {
-              if (address) navigator.clipboard?.writeText(address).catch(() => {});
-              setMenuOpen(false);
-            }}
-            className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-bg-soft"
-          >
-            Copy address
-          </button>
-          <button
-            onClick={() => {
-              setMenuOpen(false);
-              void disconnect();
-            }}
-            className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-bg-soft"
-          >
-            Disconnect
-          </button>
+        <div
+          role="menu"
+          className="absolute right-0 z-50 mt-2 w-64 animate-fade-in overflow-hidden rounded-2xl border border-line bg-card shadow-xl shadow-black/20"
+        >
+          {/* Identity header */}
+          <div className="flex items-center gap-3 border-b border-line bg-gradient-to-br from-brand-soft/60 to-transparent p-4">
+            {selectedWalletIcon ? (
+              <img src={selectedWalletIcon} alt="" className="h-10 w-10 rounded-xl" />
+            ) : (
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-bg-soft font-mono text-sm font-bold text-ink-dim ring-1 ring-line">
+                {short.slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            <div className="min-w-0">
+              {selectedWallet && (
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">
+                  {selectedWallet}
+                </p>
+              )}
+              <p className="truncate font-mono text-sm font-bold text-ink">{short}</p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="p-1.5">
+            <button
+              role="menuitem"
+              onClick={copyAddress}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink transition hover:bg-bg-soft"
+            >
+              {justCopied ? (
+                <CheckIcon className="h-4 w-4 text-up" />
+              ) : (
+                <CopyIcon className="h-4 w-4 text-ink-dim" />
+              )}
+              {justCopied ? "Copied!" : "Copy address"}
+            </button>
+
+            <button
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                navigate("/portfolio");
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink transition hover:bg-bg-soft"
+            >
+              <WalletIcon className="h-4 w-4 text-ink-dim" />
+              My portfolio
+            </button>
+
+            <a
+              role="menuitem"
+              href={`https://solscan.io/account/${address ?? ""}`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMenuOpen(false)}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink transition hover:bg-bg-soft"
+            >
+              <ExternalLinkIcon className="h-4 w-4 text-ink-dim" />
+              View on Solscan
+            </a>
+
+            <div className="my-1 border-t border-line" />
+
+            <button
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                void disconnect();
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-danger transition hover:bg-danger/10"
+            >
+              <LogoutIcon className="h-4 w-4" />
+              Disconnect
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -438,6 +545,61 @@ function ShieldIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+function CopyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+
+function WalletIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+      <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+      <path d="M18 12a2 2 0 0 0 0 4h4v-4z" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M15 3h6v6" />
+      <path d="M10 14L21 3" />
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    </svg>
+  );
+}
+
+function LogoutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
     </svg>
   );
 }
