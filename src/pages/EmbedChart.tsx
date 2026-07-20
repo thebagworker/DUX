@@ -4,6 +4,7 @@ import { fetchMarketPair, formatPercent, formatPriceUsd, type MarketPair } from 
 import { shortenAddress } from "../lib/types";
 import PriceChart, { type ChartTheme } from "../components/token/PriceChart";
 import { Spinner } from "../components/ui/Skeleton";
+import { FlameMark } from "../components/Logo";
 
 const PRICE_REFRESH_MS = 20000;
 
@@ -64,9 +65,11 @@ export default function EmbedChart() {
           target="_blank"
           rel="noopener noreferrer"
           className="flex min-w-0 items-center gap-2"
-          title="Open on MEMIPEDE DEX"
+          title="Open on Torch"
         >
-          <img src="/logo.png" alt="MEMIPEDE DEX" className="h-5 w-auto shrink-0" />
+          <span className="flex shrink-0 text-[#6d5efc]" style={{ color: "#6d5efc" }}>
+            <FlameMark className="h-5 w-5" />
+          </span>
           <span className="truncate text-sm font-bold">
             {pair?.baseSymbol ?? shortenAddress(address)}
           </span>
@@ -121,7 +124,7 @@ export default function EmbedChart() {
           rel="noopener noreferrer"
           className="font-semibold transition hover:underline"
         >
-          Powered by MEMIPEDE DEX
+          Powered by Torch
         </a>
         <span>Chart data via Dexscreener</span>
       </div>

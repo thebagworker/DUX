@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Routes, Route, Link, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useState, type ComponentType } from "react";
+import { Routes, Route, Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./lib/theme";
 import { WatchlistProvider, useWatchlist } from "./lib/watchlist";
 import ThemeToggle from "./components/ThemeToggle";
@@ -7,6 +7,8 @@ import ToastHost from "./components/ToastHost";
 import WalletProviders, { WalletButton } from "./components/WalletProviders";
 import GlobalSearch from "./components/GlobalSearch";
 import ContractAddress from "./components/ContractAddress";
+import Logo from "./components/Logo";
+import { TOKEN_CONTRACT_ADDRESS } from "./lib/config";
 import Landing from "./pages/Landing";
 import TokenPage from "./pages/TokenPage";
 import Feed from "./pages/Feed";
@@ -15,14 +17,25 @@ import Watchlist from "./pages/Watchlist";
 import Portfolio from "./pages/Portfolio";
 import EmbedChart from "./pages/EmbedChart";
 
-/** The navigation destinations shared by the desktop bar and the mobile drawer. */
-const NAV_LINKS = [
-  { to: "/feed", label: "Live Feed" },
-  { to: "/portfolio", label: "Portfolio" },
-  { to: "/docs", label: "API Docs" },
-] as const;
-
 const GITHUB_URL = "https://github.com/thebagworker/DUX";
+
+type IconProps = { className?: string };
+
+type NavItem = {
+  to: string;
+  label: string;
+  icon: ComponentType<IconProps>;
+  end?: boolean;
+  badge?: boolean;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: HomeIcon, end: true },
+  { to: "/feed", label: "Live Feed", icon: PulseIcon },
+  { to: "/portfolio", label: "Portfolio", icon: WalletIcon },
+  { to: "/watchlist", label: "Watchlist", icon: StarIcon, badge: true },
+  { to: "/docs", label: "API Docs", icon: BookIcon },
+];
 
 /** Small pill showing how many tokens are on the watchlist. */
 function WatchlistBadge({ count }: { count: number }) {
@@ -34,31 +47,78 @@ function WatchlistBadge({ count }: { count: number }) {
   );
 }
 
-/** Header link to the watchlist, badged with the number of watched tokens. */
-function WatchlistNavLink() {
+/** A single navigation row shared by the desktop sidebar and the mobile drawer. */
+function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const { watchedCount } = useWatchlist();
+  const Icon = item.icon;
   return (
-    <Link to="/watchlist" className="hidden items-center gap-1.5 hover:text-ink sm:inline-flex">
-      Watchlist
-      <WatchlistBadge count={watchedCount} />
-    </Link>
+    <NavLink
+      to={item.to}
+      end={item.end}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+          isActive
+            ? "bg-brand-soft text-brand"
+            : "text-ink-dim hover:bg-bg-soft hover:text-ink"
+        }`
+      }
+    >
+      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <span className="flex-1">{item.label}</span>
+      {item.badge && <WatchlistBadge count={watchedCount} />}
+    </NavLink>
   );
 }
 
-/**
- * Hamburger menu shown only on small screens. It slides a drawer in from the
- * right containing every navigation destination (the desktop-only header links
- * plus the watchlist), so phone users can reach the whole site.
- */
-function MobileNav() {
+/** GitHub row (external link) styled to match the nav rows. */
+function GithubRow() {
+  return (
+    <a
+      href={GITHUB_URL}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-ink-dim transition hover:bg-bg-soft hover:text-ink"
+    >
+      <GithubIcon className="h-[18px] w-[18px] shrink-0" />
+      <span className="flex-1">GitHub</span>
+    </a>
+  );
+}
+
+/** Persistent left sidebar shown on large screens. */
+function Sidebar() {
+  return (
+    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-card lg:flex">
+      <div className="px-5 py-5">
+        <Link to="/" aria-label="Torch home">
+          <Logo />
+        </Link>
+      </div>
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3">
+        {NAV_ITEMS.map((item) => (
+          <NavRow key={item.to} item={item} />
+        ))}
+      </nav>
+      <div className="space-y-3 border-t border-line p-3">
+        <GithubRow />
+        {TOKEN_CONTRACT_ADDRESS && (
+          <div className="px-1">
+            <ContractAddress className="w-full justify-center" />
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+/** Hamburger + slide-in drawer that mirrors the sidebar on small screens. */
+function MobileDrawer() {
   const [open, setOpen] = useState(false);
-  const { watchedCount } = useWatchlist();
   const location = useLocation();
 
-  // Close the drawer whenever the route changes (e.g. after tapping a link).
   useEffect(() => setOpen(false), [location.pathname]);
 
-  // Lock background scroll while the drawer owns the screen.
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
@@ -68,11 +128,8 @@ function MobileNav() {
     };
   }, [open]);
 
-  const linkClass =
-    "flex items-center justify-between rounded-lg px-3 py-2.5 text-base font-semibold text-ink transition hover:bg-bg-soft";
-
   return (
-    <div className="sm:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -87,16 +144,10 @@ function MobileNav() {
 
       {open && (
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menu">
-          <div
-            className="absolute inset-0 bg-ink/50 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute right-0 top-0 flex h-full w-72 max-w-[85%] animate-fade-in flex-col border-l border-line bg-card shadow-2xl shadow-black/25">
+          <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-0 flex h-full w-72 max-w-[85%] animate-fade-in flex-col border-r border-line bg-card shadow-2xl shadow-black/25">
             <div className="flex items-center justify-between border-b border-line px-4 py-4">
-              <span className="flex items-center">
-                <img src="/logo.png" alt="MEMIPEDE DEX" className="h-8 w-auto dark:hidden" />
-                <img src="/logo-dark.png" alt="MEMIPEDE DEX" className="hidden h-8 w-auto dark:block" />
-              </span>
+              <Logo />
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -108,23 +159,17 @@ function MobileNav() {
                 </svg>
               </button>
             </div>
-
             <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-              {NAV_LINKS.map((link) => (
-                <Link key={link.to} to={link.to} className={linkClass}>
-                  {link.label}
-                </Link>
+              {NAV_ITEMS.map((item) => (
+                <NavRow key={item.to} item={item} onNavigate={() => setOpen(false)} />
               ))}
-              <Link to="/watchlist" className={linkClass}>
-                <span className="flex items-center gap-2">
-                  Watchlist
-                  <WatchlistBadge count={watchedCount} />
-                </span>
-              </Link>
-              <a href={GITHUB_URL} target="_blank" rel="noreferrer" className={linkClass}>
-                GitHub
-              </a>
+              <GithubRow />
             </nav>
+            {TOKEN_CONTRACT_ADDRESS && (
+              <div className="border-t border-line p-3">
+                <ContractAddress className="w-full justify-center" />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -132,62 +177,74 @@ function MobileNav() {
   );
 }
 
-/** Full DUX site chrome (notice + header + footer) shared by every normal page. */
-function SiteChrome() {
+/** Sticky top bar: mobile menu + compact logo, global search, theme + wallet. */
+function TopBar() {
   return (
-    <div className="flex min-h-screen flex-col overflow-x-hidden">
-      {/* non-affiliation notice, keep visible on every page */}
-      <div className="border-b border-line bg-bg-soft px-5 py-1.5 text-left text-[11px] text-ink-dim">
-        This is <strong>not</strong> Dexscreener. Independent open-source project, not affiliated
-        with, endorsed by, or connected to DEX Screener, Inc. in any way.
+    <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-line bg-bg/80 px-4 py-3 backdrop-blur sm:gap-3 sm:px-6">
+      <MobileDrawer />
+      <Link to="/" className="flex items-center lg:hidden" aria-label="Torch home">
+        <Logo showWordmark={false} />
+      </Link>
+      <div className="flex min-w-0 flex-1 justify-center">
+        <GlobalSearch />
       </div>
-      <header className="border-b border-line">
-        <div className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 py-4 sm:gap-4 sm:px-5">
-          <Link to="/" className="flex shrink-0 items-center" aria-label="MEMIPEDE DEX home">
-            <img src="/logo.png" alt="MEMIPEDE DEX" className="h-9 w-auto dark:hidden" />
-            <img src="/logo-dark.png" alt="MEMIPEDE DEX" className="hidden h-9 w-auto dark:block" />
-          </Link>
-          <div className="flex flex-1 justify-center">
-            <GlobalSearch />
-          </div>
-          <nav className="flex shrink-0 items-center gap-3 text-sm text-ink-dim sm:gap-5">
-            {NAV_LINKS.map((link) => (
-              <Link key={link.to} to={link.to} className="hidden hover:text-ink sm:inline">
-                {link.label}
-              </Link>
-            ))}
-            <WatchlistNavLink />
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden hover:text-ink sm:inline"
-            >
-              GitHub
-            </a>
-            <ThemeToggle />
-            <WalletButton />
-            <MobileNav />
-          </nav>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-7xl flex-1 px-5 pt-8">
-        <Outlet />
-      </main>
-      <footer className="mt-12 border-t border-line">
-        <div className="mx-auto w-full max-w-7xl px-5 py-6 text-center text-[13px] text-ink-dim">
+      <ThemeToggle />
+      <div className="shrink-0">
+        <WalletButton />
+      </div>
+    </header>
+  );
+}
+
+/** Slim, always-visible non-affiliation notice. */
+function ComplianceStrip() {
+  return (
+    <div className="border-b border-line bg-bg-soft px-4 py-1.5 text-center text-[11px] text-ink-dim sm:px-6">
+      This is <strong>not</strong> Dexscreener — an independent, open-source project, not affiliated
+      with or endorsed by DEX Screener, Inc.
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="mt-12 border-t border-line">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 text-center text-[13px] text-ink-dim sm:px-6">
+        {TOKEN_CONTRACT_ADDRESS && (
           <div className="mb-4 flex justify-center">
             <ContractAddress />
           </div>
-          <p>Free &amp; open source. No fees, ever. Verification is fully on-chain.</p>
-          <p className="mt-1.5 text-[11px]">
-            MEMIPEDE DEX is an independent community project and is not affiliated with, endorsed by,
-            or connected to DEX Screener, Inc. ("Dexscreener"). All trademarks are the property of
-            their respective owners. This site provides token metadata submitted by verified token
-            authorities/holders; nothing here is financial advice.
-          </p>
+        )}
+        <p className="font-semibold text-ink">
+          Torch — free, open-source token info. Burn the paywall.
+        </p>
+        <p className="mt-1">No fees, ever. Verification is fully on-chain.</p>
+        <p className="mt-3 text-[11px]">
+          Torch is an independent community project and is not affiliated with, endorsed by, or
+          connected to DEX Screener, Inc. ("Dexscreener"). All trademarks are the property of their
+          respective owners. This site provides token metadata submitted by verified token
+          authorities/holders; nothing here is financial advice.
+        </p>
+      </div>
+    </footer>
+  );
+}
+
+/** Full Torch app shell (compliance strip + sidebar + top bar + footer). */
+function SiteChrome() {
+  return (
+    <div className="min-h-screen bg-bg">
+      <ComplianceStrip />
+      <div className="flex">
+        <Sidebar />
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <TopBar />
+          <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-6 sm:px-6">
+            <Outlet />
+          </main>
+          <Footer />
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
@@ -201,7 +258,7 @@ export default function App() {
             {/* Chrome-free chart for third-party <iframe> embeds. */}
             <Route path="/embed/token/:address" element={<EmbedChart />} />
 
-            {/* Everything else renders inside the full DUX site chrome. */}
+            {/* Everything else renders inside the full Torch app shell. */}
             <Route element={<SiteChrome />}>
               <Route path="/" element={<Landing />} />
               <Route path="/token/:address" element={<TokenPage />} />
@@ -215,5 +272,59 @@ export default function App() {
         </WalletProviders>
       </WatchlistProvider>
     </ThemeProvider>
+  );
+}
+
+/* --- Icons ---------------------------------------------------------------- */
+
+function HomeIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V21h14V9.5" />
+    </svg>
+  );
+}
+
+function PulseIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12h4l2.5 7 5-14 2.5 7H21" />
+    </svg>
+  );
+}
+
+function WalletIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H17a2 2 0 0 1 2 2v1" />
+      <path d="M3 7.5V17a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H5.5A2.5 2.5 0 0 1 3 7.5Z" />
+      <path d="M16.5 13.5h.01" />
+    </svg>
+  );
+}
+
+function StarIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m12 3.5 2.6 5.27 5.82.85-4.21 4.1.99 5.79L12 16.77l-5.2 2.73.99-5.79-4.21-4.1 5.82-.85z" />
+    </svg>
+  );
+}
+
+function BookIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H19v13H6a2 2 0 0 0-2 2z" />
+      <path d="M4 19a2 2 0 0 1 2-2h13" />
+    </svg>
+  );
+}
+
+function GithubIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.87-.01-1.71-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05a9.35 9.35 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.35 4.81-4.58 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.6.69.49A10.01 10.01 0 0 0 22 12.25C22 6.58 17.52 2 12 2z" />
+    </svg>
   );
 }

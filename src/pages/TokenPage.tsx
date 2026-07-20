@@ -306,7 +306,7 @@ export default function TokenPage() {
                 Enhanced Info
               </span>
               <span className="ml-auto rounded-md bg-brand-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand">
-                MEMIPEDE DEX
+                Torch
               </span>
             </div>
             <div className="p-4">

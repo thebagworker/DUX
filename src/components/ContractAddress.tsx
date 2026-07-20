@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { MEMIPEDE_CONTRACT_ADDRESS } from "../lib/config";
+import { TOKEN_CONTRACT_ADDRESS } from "../lib/config";
 
 /**
- * Copyable MEMIPEDE DEX contract-address chip. Shows the mint (full or shortened),
+ * Copyable $TORCH contract-address chip. Shows the mint (full or shortened),
  * links through to its token page, and copies the full address to the clipboard.
+ * Renders nothing until a contract address is configured.
  */
 export default function ContractAddress({
   full = false,
@@ -14,7 +15,8 @@ export default function ContractAddress({
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const contractAddress = MEMIPEDE_CONTRACT_ADDRESS;
+  const contractAddress = TOKEN_CONTRACT_ADDRESS;
+  if (!contractAddress) return null;
   const shortened = `${contractAddress.slice(0, 4)}…${contractAddress.slice(-4)}`;
 
   function copyToClipboard() {
@@ -35,7 +37,7 @@ export default function ContractAddress({
       <Link
         to={`/token/${contractAddress}`}
         className="truncate text-ink transition hover:text-brand"
-        title="Open MEMIPEDE DEX token page"
+        title="Open $TORCH token page"
       >
         {full ? contractAddress : shortened}
       </Link>

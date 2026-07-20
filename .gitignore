@@ -1,7 +1,8 @@
 node_modules/
 dist/
 
-.pp_key
-scripts/probe-*.mjs
-scripts/inspect-*.mjs
+# Local env (contains project-specific values). Use .env.example as the template.
+.env
+.env.local
+.env.*.local
 .vercel

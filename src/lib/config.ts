@@ -16,6 +16,10 @@ export const BROWSER_RPC: string =
   (import.meta.env.VITE_SOLANA_RPC_URL as string | undefined) ||
   "https://api.mainnet-beta.solana.com";
 
-/** The project's own token — the MEMIPEDE DEX mint this site is branded around. */
-export const MEMIPEDE_CONTRACT_ADDRESS =
-  "6LLNiWXRZp8hn5oTFTHEo8ERbJS3QJfHSKhnTCqipump";
+/**
+ * The project's own token contract (the $TORCH mint).
+ *
+ * Empty until the token is live. Set this to the mint address to light up the
+ * copyable CA chip in the sidebar, footer and landing hero across the whole site.
+ */
+export const TOKEN_CONTRACT_ADDRESS: string = "";

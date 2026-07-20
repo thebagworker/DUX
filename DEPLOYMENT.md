@@ -1,6 +1,6 @@
 # Deployment
 
-MEMIPEDE DEX is a Vite/React frontend plus three Supabase Edge Functions and a Postgres schema. The frontend runs on any static host (Vercel, Netlify, Cloudflare Pages, or any platform that builds Vite apps); the backend runs on any Supabase project (free tier is fine).
+Torch is a Vite/React frontend plus three Supabase Edge Functions and a Postgres schema. The frontend runs on any static host (Vercel, Netlify, Cloudflare Pages, or any platform that builds Vite apps); the backend runs on any Supabase project (free tier is fine).
 
 ## Prerequisites
 

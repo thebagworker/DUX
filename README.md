@@ -1,8 +1,10 @@
-# MEMIPEDE DEX
+# Torch 🔥
 
-**Live:** [memipede.vercel.app](https://memipede.vercel.app) · **$memipede CA:** `6LLNiWXRZp8hn5oTFTHEo8ERbJS3QJfHSKhnTCqipump`
+**Free token info. Burn the paywall.**
 
-Free, open-source **Enhanced Token Info** for Solana tokens. Token teams and major holders can publish a banner, description and verified links for their token, authorized purely on-chain, at no cost. The data is served through an open, Dexscreener-compatible API that any trading platform can integrate.
+**Live:** [memipede.vercel.app](https://memipede.vercel.app)
+
+Torch is the free, open-source alternative to Dexscreener's **$299** paywall for **Enhanced Token Info** on Solana. Token teams and major holders can publish a banner, description and verified links for their token, authorized purely on-chain, at no cost. The data is served through an open, Dexscreener-compatible API that any trading platform can integrate.
 
 - **Frontend:** Vite + React + TypeScript + Tailwind
 - **Backend:** Supabase Edge Functions (Deno) + Postgres. No dedicated server needed.
@@ -48,7 +50,7 @@ Also available: `GET /token-profiles/latest/v1` and `GET /token-profiles/images/
 
 ## Trademark / non-affiliation
 
-MEMIPEDE DEX is an independent community project. It is **not affiliated with, endorsed by, or connected to DEX Screener, Inc.** ("Dexscreener"). "Dexscreener" and related marks are the property of their respective owners; they are referenced only to describe API compatibility (nominative use). The site displays a permanent non-affiliation notice. If you fork or deploy this project, keep these notices intact.
+Torch is an independent community project. It is **not affiliated with, endorsed by, or connected to DEX Screener, Inc.** ("Dexscreener"). "Dexscreener" and related marks are the property of their respective owners; they are referenced only to describe API compatibility (nominative use). The site displays a permanent non-affiliation notice. If you fork or deploy this project, keep these notices intact.
 
 ## License
 

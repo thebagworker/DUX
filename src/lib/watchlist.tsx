@@ -325,9 +325,9 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
       if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
         try {
-          const notification = new Notification(`MEMIPEDE DEX alert · ${title}`, {
+          const notification = new Notification(`Torch alert · ${title}`, {
             body,
-            icon: "/logo.png",
+            icon: "/favicon.svg",
             tag: alert.id,
           });
           notification.onclick = () => {
