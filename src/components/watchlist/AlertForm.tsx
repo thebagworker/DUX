@@ -15,6 +15,8 @@ import {
 
 interface AlertFormProps {
   address: string;
+  /** Chain the token lives on; recorded with the alert. */
+  chainId?: string;
   /** Current live price, used to prefill/label a price alert. */
   currentPrice?: number | null;
   /** Current live market cap, used to prefill/label a market-cap alert. */
@@ -25,6 +27,7 @@ interface AlertFormProps {
 /** Modern form to create a price- or market-cap alert for a single token. */
 export default function AlertForm({
   address,
+  chainId,
   currentPrice,
   currentMarketCap,
   onCreated,
@@ -80,7 +83,7 @@ export default function AlertForm({
       return;
     }
     setError(null);
-    addAlert({ address, metric, direction, targetValue });
+    addAlert({ address, chainId, metric, direction, targetValue });
     onCreated?.();
   }
 

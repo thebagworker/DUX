@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { relTime, shortenAddress } from "../../lib/types";
 import { formatPriceUsd, sparkPointsFromPair } from "../../lib/market";
+import { DEFAULT_CHAIN_ID } from "../../lib/chains";
 import Sparkline from "./Sparkline";
 import {
   PriceChangeBadge,
@@ -58,12 +59,13 @@ export default function TokenList({
           <tbody>
             {list_of_items.map((item) => {
               const { address, market, description, list_of_links, updatedAt, isFresh } = item;
+              const chainId = item.chainId ?? DEFAULT_CHAIN_ID;
               const { iconUrl, name, symbol, isPriceUp } = resolveTokenIdentity(item);
 
               return (
                 <tr
-                  key={address}
-                  onClick={() => navigate(`/token/${address}`)}
+                  key={`${chainId}:${address}`}
+                  onClick={() => navigate(`/token/${chainId}/${address}`)}
                   className={`cursor-pointer border-b border-line/60 transition last:border-0 hover:bg-bg-soft/60 ${
                     isFresh ? "bg-bg-soft" : ""
                   }`}

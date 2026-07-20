@@ -354,7 +354,7 @@ function HoldingsTable({ holdings }: { holdings: PortfolioHolding[] }) {
               return (
                 <tr
                   key={holding.mint}
-                  onClick={() => navigate(`/token/${holding.mint}`)}
+                  onClick={() => navigate(`/token/solana/${holding.mint}`)}
                   className="cursor-pointer border-b border-line/60 transition last:border-0 hover:bg-bg-soft/60"
                 >
                   <td className="px-4 py-3">

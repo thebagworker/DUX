@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { TOKEN_CONTRACT_ADDRESS } from "../lib/config";
+import { DEFAULT_CHAIN_ID } from "../lib/chains";
 
 /**
  * Copyable $TORCH contract-address chip. Shows the mint (full or shortened),
@@ -35,7 +36,7 @@ export default function ContractAddress({
     >
       <span className="font-sans font-semibold uppercase tracking-wide text-ink-dim">CA</span>
       <Link
-        to={`/token/${contractAddress}`}
+        to={`/token/${DEFAULT_CHAIN_ID}/${contractAddress}`}
         className="truncate text-ink transition hover:text-brand"
         title="Open $TORCH token page"
       >

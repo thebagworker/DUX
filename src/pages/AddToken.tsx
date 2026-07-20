@@ -12,9 +12,17 @@ import {
   searchTokens,
   type TokenSearchResult,
 } from "../lib/market";
+import { resolveTokenAcrossChains } from "../lib/market";
 import { fetchDuxProfileStatus } from "../lib/profiles";
 import {
+  DEFAULT_CHAIN_ID,
+  chainTypeOf,
+  getChain,
+  isValidAddressForChain,
+  isValidEvmAddress,
   isValidSolanaAddress,
+} from "../lib/chains";
+import {
   prepareBannerImage,
   saveTokenProfile,
   verifyTokenOwnership,
@@ -40,6 +48,7 @@ const SEARCH_DEBOUNCE_MS = 250;
 /** The token the user picked in step 1, carried through the rest of the flow. */
 interface ChosenToken {
   address: string;
+  chainId: string;
   name: string;
   symbol: string;
   imageUrl: string | null;
@@ -49,8 +58,14 @@ interface ChosenToken {
 
 export default function AddToken() {
   const navigate = useNavigate();
-  const { address: routeAddress } = useParams();
-  const { address: walletAddress, connected, openPicker, signMessage } = useWallet();
+  const { chainId: routeChainId, address: routeAddress } = useParams();
+  const {
+    address: walletAddress,
+    chainType: walletChainType,
+    connected,
+    openPicker,
+    signMessage,
+  } = useWallet();
 
   const [step, setStep] = useState<StepName>("Find");
   const [chosen, setChosen] = useState<ChosenToken | null>(null);
@@ -86,16 +101,18 @@ export default function AddToken() {
   const bootstrappedRef = useRef(false);
   useEffect(() => {
     if (bootstrappedRef.current) return;
-    if (!routeAddress || !isValidSolanaAddress(routeAddress)) return;
+    const chainId = routeChainId ?? DEFAULT_CHAIN_ID;
+    if (!routeAddress || !isValidAddressForChain(chainId, routeAddress)) return;
     bootstrappedRef.current = true;
     (async () => {
       const [briefs, status] = await Promise.all([
-        fetchTokenBriefs([routeAddress]),
-        fetchDuxProfileStatus(routeAddress),
+        fetchTokenBriefs([routeAddress], chainId),
+        fetchDuxProfileStatus(routeAddress, chainId),
       ]);
       const brief = briefs[routeAddress];
       chooseToken({
         address: routeAddress,
+        chainId,
         name: brief?.name ?? "",
         symbol: brief?.symbol ?? "",
         imageUrl: brief?.imageUrl ?? null,
@@ -103,21 +120,32 @@ export default function AddToken() {
         alreadyOnTorch: status.hasProfile,
       });
     })();
-  }, [routeAddress, chooseToken]);
+  }, [routeChainId, routeAddress, chooseToken]);
 
   async function handleVerify() {
     if (!walletAddress || !chosen) return;
+    // The connected wallet must match the token's chain family (an EVM wallet
+    // can't sign for a Solana token and vice-versa).
+    const tokenChainType = chainTypeOf(chosen.chainId);
+    if (walletChainType && walletChainType !== tokenChainType) {
+      const chainName = getChain(chosen.chainId)?.name ?? chosen.chainId;
+      setVerifyError(
+        `This is a ${chainName} token. Switch to a ${tokenChainType === "solana" ? "Solana" : "an EVM"} wallet, then try again.`
+      );
+      return;
+    }
     setVerifying(true);
     setVerifyError(null);
     try {
       const result = await verifyTokenOwnership({
+        chainId: chosen.chainId,
         wallet: walletAddress,
         tokenAddress: chosen.address,
         signMessage,
       });
       setEditToken(result.editToken);
       setRole(result.role);
-      await prefillExistingProfile(chosen.address);
+      await prefillExistingProfile(chosen.chainId, chosen.address);
       setStep("Customize");
     } catch (e) {
       setVerifyError(e instanceof Error ? e.message : String(e));
@@ -127,9 +155,9 @@ export default function AddToken() {
   }
 
   /** Pull any info the token already has so edits start from the current state. */
-  async function prefillExistingProfile(address: string) {
+  async function prefillExistingProfile(chainId: string, address: string) {
     try {
-      const res = await fetch(`${API_BASE}/token-profiles/solana/${address}`, {
+      const res = await fetch(`${API_BASE}/token-profiles/${chainId}/${address}`, {
         cache: "no-store",
       });
       if (!res.ok) return;
@@ -208,7 +236,7 @@ export default function AddToken() {
         {step === "Live" && chosen && (
           <LiveStep
             token={chosen}
-            onView={() => navigate(`/token/${chosen.address}`)}
+            onView={() => navigate(`/token/${chosen.chainId}/${chosen.address}`)}
             onAddAnother={() => {
               setChosen(null);
               setEditToken(null);
@@ -303,7 +331,9 @@ function FindStep({ onChoose }: { onChoose: (token: ChosenToken) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const trimmed = query.trim();
-  const looksLikeAddress = isValidSolanaAddress(trimmed);
+  const looksLikeSolana = isValidSolanaAddress(trimmed);
+  const looksLikeEvm = isValidEvmAddress(trimmed);
+  const looksLikeAddress = looksLikeSolana || looksLikeEvm;
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -331,9 +361,10 @@ function FindStep({ onChoose }: { onChoose: (token: ChosenToken) => void }) {
   }, [trimmed, looksLikeAddress]);
 
   async function chooseFromSearch(token: TokenSearchResult) {
-    const status = await fetchDuxProfileStatus(token.address);
+    const status = await fetchDuxProfileStatus(token.address, token.chainId);
     onChoose({
       address: token.address,
+      chainId: token.chainId,
       name: token.name,
       symbol: token.symbol,
       imageUrl: token.imageUrl,
@@ -344,20 +375,28 @@ function FindStep({ onChoose }: { onChoose: (token: ChosenToken) => void }) {
 
   async function chooseFromAddress() {
     if (!looksLikeAddress) {
-      setError("That doesn't look like a valid Solana mint address.");
+      setError("That doesn't look like a valid Solana or EVM token address.");
       return;
     }
     setResolving(true);
     setError(null);
     try {
+      // Solana mints are unambiguous; for a 0x address, ask the market resolver
+      // which EVM chain actually has the token (falls back to Ethereum).
+      let chainId = DEFAULT_CHAIN_ID;
+      if (looksLikeEvm) {
+        const resolved = await resolveTokenAcrossChains(trimmed);
+        chainId = resolved.chainId === DEFAULT_CHAIN_ID ? "ethereum" : resolved.chainId;
+      }
       const [pair, briefs, status] = await Promise.all([
-        fetchMarketPair(trimmed),
-        fetchTokenBriefs([trimmed]),
-        fetchDuxProfileStatus(trimmed),
+        fetchMarketPair(trimmed, chainId),
+        fetchTokenBriefs([trimmed], chainId),
+        fetchDuxProfileStatus(trimmed, chainId),
       ]);
       const brief = briefs[trimmed];
       onChoose({
         address: trimmed,
+        chainId,
         name: pair?.baseName ?? brief?.name ?? "",
         symbol: pair?.baseSymbol ?? brief?.symbol ?? "",
         imageUrl: pair?.imageUrl ?? brief?.imageUrl ?? null,
@@ -420,7 +459,7 @@ function FindStep({ onChoose }: { onChoose: (token: ChosenToken) => void }) {
           ) : (
             results.map((token) => (
               <button
-                key={token.address}
+                key={`${token.chainId}:${token.address}`}
                 onClick={() => chooseFromSearch(token)}
                 className="flex w-full items-center gap-3 rounded-xl border border-line bg-bg-soft px-3 py-2.5 text-left transition hover:border-accent"
               >
@@ -458,7 +497,8 @@ function FindStep({ onChoose }: { onChoose: (token: ChosenToken) => void }) {
 
       <p className="mt-4 flex items-start gap-1.5 text-[12px] text-ink-dim">
         <FlameMark className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />
-        Works for any Solana token — including brand-new pump.fun launches that aren't trading yet.
+        Works for any Solana or EVM token — including brand-new pump.fun launches that aren't
+        trading yet.
       </p>
     </div>
   );
@@ -764,8 +804,8 @@ function LiveStep({
   const [copied, setCopied] = useState(false);
   const shareUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/token/${token.address}`
-      : `/token/${token.address}`;
+      ? `${window.location.origin}/token/${token.chainId}/${token.address}`
+      : `/token/${token.chainId}/${token.address}`;
 
   function copy() {
     navigator.clipboard?.writeText(shareUrl).then(

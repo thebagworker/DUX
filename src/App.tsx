@@ -1,7 +1,8 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
-import { Routes, Route, Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Routes, Route, Link, NavLink, Outlet, Navigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "./lib/theme";
+import { DEFAULT_CHAIN_ID } from "./lib/chains";
 import { WatchlistProvider, useWatchlist } from "./lib/watchlist";
 import ThemeToggle from "./components/ThemeToggle";
 import ToastHost from "./components/ToastHost";
@@ -253,6 +254,17 @@ function Footer() {
   );
 }
 
+/**
+ * Redirect legacy chain-less token/add links (`/token/:address`) to their
+ * chain-aware equivalent, defaulting to Solana so every pre-multichain link
+ * keeps working. The `prefix` is the route base ("token", "add" or
+ * "embed/token").
+ */
+function ChainCompatRedirect({ prefix }: { prefix: string }) {
+  const { address = "" } = useParams();
+  return <Navigate to={`/${prefix}/${DEFAULT_CHAIN_ID}/${address}`} replace />;
+}
+
 function NotFound() {
   return (
     <div className="py-16 text-center">
@@ -297,14 +309,20 @@ export default function App() {
         <WalletProviders>
           <Routes>
             {/* Chrome-free chart for third-party <iframe> embeds. */}
-            <Route path="/embed/token/:address" element={<EmbedChart />} />
+            <Route path="/embed/token/:chainId/:address" element={<EmbedChart />} />
+            <Route
+              path="/embed/token/:address"
+              element={<ChainCompatRedirect prefix="embed/token" />}
+            />
 
             {/* Everything else renders inside the full Torch app shell. */}
             <Route element={<SiteChrome />}>
               <Route path="/" element={<Landing />} />
               <Route path="/add" element={<AddToken />} />
-              <Route path="/add/:address" element={<AddToken />} />
-              <Route path="/token/:address" element={<TokenPage />} />
+              <Route path="/add/:chainId/:address" element={<AddToken />} />
+              <Route path="/add/:address" element={<ChainCompatRedirect prefix="add" />} />
+              <Route path="/token/:chainId/:address" element={<TokenPage />} />
+              <Route path="/token/:address" element={<ChainCompatRedirect prefix="token" />} />
               <Route path="/feed" element={<Feed />} />
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/watchlist" element={<Watchlist />} />

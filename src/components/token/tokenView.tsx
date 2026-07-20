@@ -13,6 +13,8 @@ import type { TokenLink } from "../../lib/types";
  */
 export interface TokenViewItem {
   address: string;
+  /** Chain the token lives on. Defaults to Solana when absent (legacy data). */
+  chainId?: string;
   market: MarketPair | null | undefined;
   brief: TokenBrief | undefined;
   /** Banner image shown at the top of a card. Live-feed profiles have one. */

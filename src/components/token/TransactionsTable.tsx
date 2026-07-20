@@ -5,6 +5,7 @@ import {
   relTimeShort,
   type Trade,
 } from "../../lib/market";
+import { DEFAULT_CHAIN_ID, explorerAccountUrl } from "../../lib/chains";
 import { Skeleton } from "../ui/Skeleton";
 
 function shortWallet(w: string): string {
@@ -42,10 +43,12 @@ export default function TransactionsTable({
   trades,
   baseSymbol,
   loading,
+  chainId = DEFAULT_CHAIN_ID,
 }: {
   trades: Trade[];
   baseSymbol: string;
   loading: boolean;
+  chainId?: string;
 }) {
   return (
     <div className="rounded-2xl border border-line bg-card">
@@ -102,7 +105,7 @@ export default function TransactionsTable({
                 </td>
                 <td className="px-4 py-2 text-right">
                   <a
-                    href={`https://solscan.io/account/${t.wallet}`}
+                    href={explorerAccountUrl(chainId, t.wallet)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-mono text-ink-dim transition hover:text-ink"

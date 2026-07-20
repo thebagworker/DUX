@@ -5,6 +5,12 @@ import { useWallet, WalletButton } from "../components/WalletProviders";
 import { shortenAddress, type TokenProfile } from "../lib/types";
 import { prepareBannerImage, saveTokenProfile, verifyTokenOwnership } from "../lib/tokenClaim";
 import { fetchMarketPair, fetchTrades, type MarketPair, type Trade } from "../lib/market";
+import {
+  DEFAULT_CHAIN_ID,
+  chainTypeOf,
+  getChain,
+  isValidAddressForChain,
+} from "../lib/chains";
 import TokenHeader from "../components/token/TokenHeader";
 import PriceChart from "../components/token/PriceChart";
 import EmbedChartDialog from "../components/token/EmbedChartDialog";
@@ -20,9 +26,16 @@ import { useWatchlist } from "../lib/watchlist";
 const MARKET_REFRESH_MS = 20000;
 
 export default function TokenPage() {
-  const { address = "" } = useParams();
-  const { address: walletAddress, signMessage, connected } = useWallet();
+  const { chainId = DEFAULT_CHAIN_ID, address = "" } = useParams();
+  const {
+    address: walletAddress,
+    chainType: walletChainType,
+    signMessage,
+    connected,
+  } = useWallet();
   const { alertsForToken } = useWatchlist();
+
+  const chainName = getChain(chainId)?.name ?? "Solana";
 
   const [profile, setProfile] = useState<TokenProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,10 +60,10 @@ export default function TokenPage() {
   const [alertsOpen, setAlertsOpen] = useState(false);
 
   // Basic client-side sanity check so garbage in the URL renders a friendly
-  // message instead of firing doomed API calls for an obviously-invalid mint.
+  // message instead of firing doomed API calls for an obviously-invalid token.
   const isValidAddress = useMemo(
-    () => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address),
-    [address]
+    () => isValidAddressForChain(chainId, address),
+    [chainId, address]
   );
 
   const bannerPreview = useMemo(
@@ -73,7 +86,7 @@ export default function TokenPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/token-profiles/solana/${address}`, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/token-profiles/${chainId}/${address}`, { cache: "no-store" });
       if (res.ok) {
         const p: TokenProfile = await res.json();
         setProfile(p);
@@ -89,7 +102,7 @@ export default function TokenPage() {
     } finally {
       setLoading(false);
     }
-  }, [address, isValidAddress]);
+  }, [chainId, address, isValidAddress]);
 
   useEffect(() => {
     loadProfile();
@@ -104,7 +117,7 @@ export default function TokenPage() {
     setVerifying(false);
     setBannerFile(null);
     if (bannerInput.current) bannerInput.current.value = "";
-  }, [address]);
+  }, [chainId, address]);
 
   // Live market data: pair stats + recent trades, refreshed on an interval.
   useEffect(() => {
@@ -118,11 +131,11 @@ export default function TokenPage() {
     }
 
     async function loadMarket(initial: boolean) {
-      const p = await fetchMarketPair(address);
+      const p = await fetchMarketPair(address, chainId);
       if (stop) return;
       setPair(p);
       if (p) {
-        const t = await fetchTrades(p.pairAddress);
+        const t = await fetchTrades(p.pairAddress, chainId);
         if (!stop) setTrades(t);
       }
       if (initial && !stop) setMarketLoading(false);
@@ -134,14 +147,24 @@ export default function TokenPage() {
       stop = true;
       clearInterval(iv);
     };
-  }, [address, isValidAddress]);
+  }, [chainId, address, isValidAddress]);
 
   async function verify() {
     if (!walletAddress) return;
+    // The connected wallet must be on the same chain family as the token, or the
+    // signature/qualification will be meaningless. Prompt the user to switch.
+    if (walletChainType !== chainTypeOf(chainId)) {
+      setMsg({
+        kind: "err",
+        text: `Connect a ${chainName} wallet to verify this token, then try again.`,
+      });
+      return;
+    }
     setVerifying(true);
     setMsg(null);
     try {
       const result = await verifyTokenOwnership({
+        chainId,
         wallet: walletAddress,
         tokenAddress: address,
         signMessage,
@@ -188,7 +211,7 @@ export default function TokenPage() {
       <div className="py-16 text-center">
         <h1 className="text-2xl font-bold">Invalid token address</h1>
         <p className="mx-auto mt-2 max-w-md text-ink-dim">
-          That doesn't look like a valid Solana mint address. Double-check the link and try again.
+          That doesn't look like a valid {chainName} token address. Double-check the link and try again.
         </p>
         <Link
           to="/"
@@ -208,7 +231,7 @@ export default function TokenPage() {
           ← Back
         </Link>
         <div className="flex items-center gap-2.5">
-          <WatchButton address={address} />
+          <WatchButton address={address} chainId={chainId} />
           <WalletButton />
         </div>
       </div>
@@ -217,6 +240,7 @@ export default function TokenPage() {
       {pair ? (
         <TokenHeader
           address={address}
+          chainId={chainId}
           name={pair.baseName}
           symbol={pair.baseSymbol}
           imageUrl={pair.imageUrl ?? profile?.icon ?? null}
@@ -280,6 +304,7 @@ export default function TokenPage() {
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <PriceChart
             pairAddress={pair?.pairAddress ?? null}
+            chainId={chainId}
             onEmbedClick={() => setEmbedOpen(true)}
           />
           {pair && (
@@ -287,6 +312,7 @@ export default function TokenPage() {
               trades={trades}
               baseSymbol={pair.baseSymbol}
               loading={marketLoading}
+              chainId={chainId}
             />
           )}
         </div>
@@ -295,7 +321,7 @@ export default function TokenPage() {
         <div className="flex min-w-0 flex-col gap-4">
           {pair && <StatsPanel pair={pair} />}
 
-          {pair && (
+          {pair && chainTypeOf(chainId) === "solana" && (
             <HoldingValue
               address={address}
               priceUsd={pair.priceUsd}
@@ -373,13 +399,14 @@ export default function TokenPage() {
                   />
                 </svg>
               </button>
-              <WatchButton address={address} compact />
+              <WatchButton address={address} chainId={chainId} compact />
             </div>
             {alertsOpen && (
               <>
                 <div className="mt-3">
                   <AlertForm
                     address={address}
+                    chainId={chainId}
                     currentPrice={pair?.priceUsd ?? null}
                     currentMarketCap={pair?.marketCap ?? null}
                   />
@@ -421,7 +448,7 @@ export default function TokenPage() {
                 )}
               </button>
               <Link
-                to={`/add/${address}`}
+                to={`/add/${chainId}/${address}`}
                 className="mt-3 block text-center text-sm font-semibold text-brand hover:underline"
               >
                 Prefer a guided step-by-step flow? →
@@ -501,7 +528,7 @@ export default function TokenPage() {
             <h3 className="mb-2 font-semibold">For integrators</h3>
             <p className="text-sm text-ink-dim">This data is publicly available right away:</p>
             <code className="my-2 block overflow-x-auto rounded-lg border border-line bg-bg-soft px-3.5 py-2.5 font-mono text-[12px]">
-              GET /token-profiles/solana/{address}
+              GET /token-profiles/{chainId}/{address}
             </code>
             <Link to="/docs" className="text-sm text-ink-dim hover:text-ink">
               → full API documentation
@@ -513,6 +540,7 @@ export default function TokenPage() {
       {embedOpen && (
         <EmbedChartDialog
           address={address}
+          chainId={chainId}
           symbol={pair?.baseSymbol}
           onClose={() => setEmbedOpen(false)}
         />

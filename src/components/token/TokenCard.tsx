@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { relTime, shortenAddress } from "../../lib/types";
 import { formatPriceUsd, sparkPointsFromPair } from "../../lib/market";
+import { DEFAULT_CHAIN_ID } from "../../lib/chains";
 import Sparkline from "./Sparkline";
 import WatchButton from "../WatchButton";
 import {
@@ -23,16 +24,17 @@ interface TokenCardProps {
  */
 export default function TokenCard({ item, footer }: TokenCardProps) {
   const { address, market, headerImageUrl, description, list_of_links, updatedAt, isFresh } = item;
+  const chainId = item.chainId ?? DEFAULT_CHAIN_ID;
   const { iconUrl, name, symbol, isPriceUp } = resolveTokenIdentity(item);
 
   return (
     <Link
-      to={`/token/${address}`}
+      to={`/token/${chainId}/${address}`}
       className={`group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-card transition hover:-translate-y-0.5 hover:border-accent hover:shadow-lg hover:shadow-black/5 ${
         isFresh ? "animate-flash" : ""
       }`}
     >
-      <WatchButton address={address} compact className="absolute right-2 top-2 z-10" />
+      <WatchButton address={address} chainId={chainId} compact className="absolute right-2 top-2 z-10" />
 
       {headerImageUrl !== undefined && (
         <div className="aspect-[3/1] bg-bg-soft">

@@ -32,7 +32,7 @@ export default function Docs() {
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <Fact label="Auth" value="None — no API keys" />
         <Fact label="CORS" value="Access-Control-Allow-Origin: *" />
-        <Fact label="Chain" value="Solana (chainId: solana)" />
+        <Fact label="Chains" value="Solana + major EVM" />
       </div>
 
       <p className="mt-6 text-ink-dim">
@@ -57,7 +57,9 @@ export default function Docs() {
       {/* Quick start */}
       <h2 className={h2}>Quick start</h2>
       <p className="mt-2 text-ink-dim">Fetch a single token profile — no key, works from the browser:</p>
-      <pre className={pre}>{`curl ${API_BASE}/token-profiles/solana/${EXAMPLE_MINT}`}</pre>
+      <pre className={pre}>{`curl ${API_BASE}/token-profiles/solana/${EXAMPLE_MINT}
+# EVM tokens use the chain slug + 0x contract address:
+curl ${API_BASE}/token-profiles/base/0x4200000000000000000000000000000000000006`}</pre>
 
       {/* Endpoints */}
       <h2 className={h2}>Endpoints</h2>
@@ -83,8 +85,8 @@ export default function Docs() {
             </tr>
             <tr>
               <td className={td}>GET</td>
-              <td className={`${td} ${code} whitespace-nowrap`}>/token-profiles/solana/{"{tokenAddress}"}</td>
-              <td className={td}>Single profile by mint address (404 if none)</td>
+              <td className={`${td} ${code} whitespace-nowrap`}>/token-profiles/{"{chainId}"}/{"{tokenAddress}"}</td>
+              <td className={td}>Single profile by chain + address (404 if none)</td>
             </tr>
             <tr>
               <td className={td}>GET</td>
@@ -101,7 +103,7 @@ export default function Docs() {
         A single profile. List endpoints return an array of these objects.
       </p>
       <pre className={pre}>{`{
-  "url": "https://<frontend>/token/<tokenAddress>",
+  "url": "https://<frontend>/token/<chainId>/<tokenAddress>",
   "chainId": "solana",
   "tokenAddress": "${EXAMPLE_MINT}",
   "icon": "<base>/token-profiles/images/<uuid>",   // or null
@@ -173,7 +175,7 @@ export default function Docs() {
         <code className={code}>updatedAt</code>:
       </p>
       <pre className={pre}>{`const res = await fetch(
-  \`${API_BASE}/token-profiles/solana/\${mint}\`
+  \`${API_BASE}/token-profiles/\${chainId}/\${tokenAddress}\`
 );
 if (res.ok) {
   const profile = await res.json();

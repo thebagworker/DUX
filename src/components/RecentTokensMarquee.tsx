@@ -22,9 +22,20 @@ export default function RecentTokensMarquee() {
         if (stop) return;
         setTokens(latest);
 
-        // Enrich with real names / logos from the market APIs (one batch call).
-        const map = await fetchTokenBriefs(latest.map((t) => t.tokenAddress));
-        if (!stop) setBriefs(map);
+        // Enrich with real names / logos from the market APIs. Group by chain
+        // so each chain's briefs come from the right per-provider slug.
+        const byChain = new Map<string, string[]>();
+        for (const t of latest) {
+          const list = byChain.get(t.chainId) ?? [];
+          list.push(t.tokenAddress);
+          byChain.set(t.chainId, list);
+        }
+        const maps = await Promise.all(
+          [...byChain.entries()].map(([chainId, addresses]) =>
+            fetchTokenBriefs(addresses, chainId)
+          )
+        );
+        if (!stop) setBriefs(Object.assign({}, ...maps));
       } catch {
         /* transient error, ignore */
       } finally {
@@ -93,8 +104,8 @@ export default function RecentTokensMarquee() {
               const monogram = (name || symbol || t.tokenAddress).slice(0, 2).toUpperCase();
               return (
                 <Link
-                  key={`${t.tokenAddress}-${i}`}
-                  to={`/token/${t.tokenAddress}`}
+                  key={`${t.chainId}:${t.tokenAddress}-${i}`}
+                  to={`/token/${t.chainId}/${t.tokenAddress}`}
                   className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-bg-soft px-3 py-1.5 transition hover:border-brand hover:bg-brand-soft"
                 >
                   {image ? (

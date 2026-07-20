@@ -14,8 +14,10 @@
  * duplicated across screens.
  */
 
-import bs58 from "bs58";
 import { API_BASE } from "./config";
+import { DEFAULT_CHAIN_ID } from "./chains";
+
+export { isValidEvmAddress, isValidSolanaAddress } from "./chains";
 
 /** What the backend hands back once ownership is proven. */
 export interface OwnershipVerification {
@@ -47,16 +49,23 @@ export interface TokenProfileEdits {
  * never asks for, builds, or sends a transaction.
  */
 export async function verifyTokenOwnership(params: {
+  chainId?: string;
   wallet: string;
   tokenAddress: string;
-  signMessage: (message: Uint8Array) => Promise<Uint8Array>;
+  /**
+   * Sign a plain-text message and return a wire-ready signature. The wallet
+   * layer encodes it per chain (base58 for Solana, `0x`-hex for EVM), so this
+   * function forwards the signature to the backend verbatim.
+   */
+  signMessage: (message: string) => Promise<string>;
 }): Promise<OwnershipVerification> {
   const { wallet, tokenAddress, signMessage } = params;
+  const chainId = params.chainId ?? DEFAULT_CHAIN_ID;
 
   const nonceRes = await fetch(`${API_BASE}/auth/nonce`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ wallet, tokenAddress }),
+    body: JSON.stringify({ chainId, wallet, tokenAddress }),
   });
   if (!nonceRes.ok) {
     const body = await nonceRes.json().catch(() => ({}));
@@ -64,16 +73,17 @@ export async function verifyTokenOwnership(params: {
   }
   const { nonce, message } = await nonceRes.json();
 
-  const signature = await signMessage(new TextEncoder().encode(message));
+  const signature = await signMessage(message);
 
   const verifyRes = await fetch(`${API_BASE}/auth/verify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      chainId,
       wallet,
       tokenAddress,
       nonce,
-      signature: bs58.encode(signature),
+      signature,
     }),
   });
   const data = await verifyRes.json();
@@ -154,9 +164,4 @@ export async function prepareBannerImage(file: File): Promise<Blob> {
   );
   if (!blob) throw new Error("Could not process the image");
   return blob;
-}
-
-/** True when a string looks like a valid Solana mint address. */
-export function isValidSolanaAddress(address: string): boolean {
-  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address.trim());
 }

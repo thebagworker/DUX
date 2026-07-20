@@ -1,20 +1,45 @@
 /**
- * Live market data for a Solana token.
+ * Live market data for a token on any supported chain (Solana + EVM).
  *
  * Profiles (banner/description/links) come from the DUX backend. Trading data
  * — price, liquidity, market cap, buys/sells, candles and recent trades — is
  * pulled from free, public, key-less sources so any token works out of the box:
  *
- *   - Dexscreener token API  → aggregate pair stats
- *   - GeckoTerminal API      → OHLCV candles + individual recent trades
+ *   - Dexscreener token API  → aggregate pair stats (all chains)
+ *   - GeckoTerminal API      → OHLCV candles + individual recent trades (all chains)
+ *   - Jupiter token API      → Solana-only fallback for tokens not yet on a DEX
  *
- * Everything here is read-only and safe to call from the browser.
+ * Chain selection is driven by the shared registry: Dexscreener and
+ * GeckoTerminal name the same chain differently, so callers pass a Torch
+ * `chainId` and this module resolves the right per-provider slug. Everything
+ * here is read-only and safe to call from the browser.
  */
+
+import {
+  DEFAULT_CHAIN_ID,
+  chainTypeOf,
+  getChain,
+  SUPPORTED_CHAINS,
+} from "./chains";
 
 const DEXSCREENER_BASE = "https://api.dexscreener.com/latest/dex";
 const GECKOTERMINAL_BASE = "https://api.geckoterminal.com/api/v2";
 const JUPITER_TOKEN_BASE = "https://lite-api.jup.ag/tokens/v2";
-const NETWORK = "solana";
+
+/** Dexscreener chain slug for a Torch chain id (defaults to Solana's). */
+function dexSlugFor(chainId: string): string {
+  return getChain(chainId)?.dexscreenerSlug ?? "solana";
+}
+
+/** GeckoTerminal network slug for a Torch chain id (defaults to Solana's). */
+function geckoSlugFor(chainId: string): string {
+  return getChain(chainId)?.geckoterminalSlug ?? "solana";
+}
+
+/** Reverse-map a Dexscreener chain slug back to a Torch chain id. */
+function chainIdFromDexSlug(slug: string): string | null {
+  return SUPPORTED_CHAINS.find((chain) => chain.dexscreenerSlug === slug)?.id ?? null;
+}
 
 export interface TxnBuckets {
   buys: number;
@@ -97,22 +122,25 @@ function mapDexscreenerPair(raw: any): MarketPair {
   };
 }
 
-/** Pick the deepest (most liquid) Solana pair from a list of raw pair rows. */
-function deepestSolanaPair(pairs: any[]): any | null {
-  const solanaPairs = pairs.filter((p) => p?.chainId === NETWORK);
-  if (solanaPairs.length === 0) return null;
-  return solanaPairs.reduce((a, b) =>
+/** Pick the deepest (most liquid) pair for a given Dexscreener chain slug. */
+function deepestPairForChain(pairs: any[], dexSlug: string): any | null {
+  const chainPairs = pairs.filter((p) => p?.chainId === dexSlug);
+  if (chainPairs.length === 0) return null;
+  return chainPairs.reduce((a, b) =>
     toNumber(b?.liquidity?.usd) > toNumber(a?.liquidity?.usd) ? b : a
   );
 }
 
-/** Fetch the deepest (most liquid) Solana pair for a token from Dexscreener. */
-export async function fetchMarketPair(tokenAddress: string): Promise<MarketPair | null> {
+/** Fetch the deepest (most liquid) pair for a token on a chain from Dexscreener. */
+export async function fetchMarketPair(
+  tokenAddress: string,
+  chainId: string = DEFAULT_CHAIN_ID
+): Promise<MarketPair | null> {
   const res = await fetch(`${DEXSCREENER_BASE}/tokens/${tokenAddress}`, { cache: "no-store" });
   if (!res.ok) return null;
   const body = await res.json();
   const pairs: any[] = Array.isArray(body?.pairs) ? body.pairs : [];
-  const best = deepestSolanaPair(pairs);
+  const best = deepestPairForChain(pairs, dexSlugFor(chainId));
   return best ? mapDexscreenerPair(best) : null;
 }
 
@@ -127,13 +155,15 @@ export async function fetchMarketPair(tokenAddress: string): Promise<MarketPair 
  * can distinguish "checked, none found" from "not fetched yet".
  */
 export async function fetchMarketPairs(
-  addresses: string[]
+  addresses: string[],
+  chainId: string = DEFAULT_CHAIN_ID
 ): Promise<Record<string, MarketPair | null>> {
   const unique = [...new Set(addresses)];
   const marketByAddress: Record<string, MarketPair | null> = {};
   for (const address of unique) marketByAddress[address] = null;
   if (unique.length === 0) return marketByAddress;
 
+  const dexSlug = dexSlugFor(chainId);
   const batches: string[][] = [];
   for (let i = 0; i < unique.length; i += DEXSCREENER_BATCH_SIZE) {
     batches.push(unique.slice(i, i + DEXSCREENER_BATCH_SIZE));
@@ -158,7 +188,7 @@ export async function fetchMarketPairs(
         }
 
         for (const address of batch) {
-          const best = deepestSolanaPair(pairsByAddress[address] ?? []);
+          const best = deepestPairForChain(pairsByAddress[address] ?? [], dexSlug);
           if (best) marketByAddress[address] = mapDexscreenerPair(best);
         }
       } catch {
@@ -249,9 +279,13 @@ async function fetchJupiterMarkets(
  * show a live price and market cap.
  */
 export async function fetchMarketPairsResilient(
-  addresses: string[]
+  addresses: string[],
+  chainId: string = DEFAULT_CHAIN_ID
 ): Promise<Record<string, MarketPair | null>> {
-  const dexMarkets = await fetchMarketPairs(addresses);
+  const dexMarkets = await fetchMarketPairs(addresses, chainId);
+  // Jupiter only covers Solana; other chains rely on Dexscreener alone.
+  if (chainTypeOf(chainId) !== "solana") return dexMarkets;
+
   const missing = Object.keys(dexMarkets).filter((address) => dexMarkets[address] == null);
   if (missing.length === 0) return dexMarkets;
 
@@ -263,9 +297,42 @@ export async function fetchMarketPairsResilient(
   return merged;
 }
 
+/**
+ * Resolve which supported chain a raw token address trades on by asking
+ * Dexscreener for all its pairs and picking the chain with the deepest
+ * liquidity. Used by the "Add your token" flow where a user may paste a bare
+ * address without knowing (or specifying) its chain. Returns the default chain
+ * when nothing conclusive is found.
+ */
+export async function resolveTokenAcrossChains(
+  tokenAddress: string
+): Promise<{ chainId: string; pair: MarketPair | null }> {
+  try {
+    const res = await fetch(`${DEXSCREENER_BASE}/tokens/${tokenAddress}`, { cache: "no-store" });
+    if (res.ok) {
+      const body = await res.json();
+      const pairs: any[] = Array.isArray(body?.pairs) ? body.pairs : [];
+      let best: any | null = null;
+      for (const pair of pairs) {
+        if (!chainIdFromDexSlug(pair?.chainId)) continue;
+        if (!best || toNumber(pair?.liquidity?.usd) > toNumber(best?.liquidity?.usd)) best = pair;
+      }
+      if (best) {
+        const resolved = chainIdFromDexSlug(best.chainId) ?? DEFAULT_CHAIN_ID;
+        return { chainId: resolved, pair: mapDexscreenerPair(best) };
+      }
+    }
+  } catch {
+    /* fall through to default */
+  }
+  return { chainId: DEFAULT_CHAIN_ID, pair: null };
+}
+
 /** A single token surfaced by the platform-wide command-palette search. */
 export interface TokenSearchResult {
   address: string;
+  /** Torch chain id the result belongs to. */
+  chainId: string;
   name: string;
   symbol: string;
   imageUrl: string | null;
@@ -276,16 +343,20 @@ export interface TokenSearchResult {
 }
 
 /**
- * Search Solana tokens by name, symbol or address for the global command
- * palette. Backed by Dexscreener's public, key-less `/search` endpoint, which
- * matches against token identity and returns matching pairs.
+ * Search tokens by name, symbol or address for the global command palette.
+ * Backed by Dexscreener's public, key-less `/search` endpoint, which matches
+ * against token identity across every chain and returns matching pairs.
  *
  * A token can trade in many pairs, so we collapse every returned pair down to
- * one row per base-token address, keeping the deepest (most liquid) pair as the
- * canonical price/identity for that token, then rank the tokens by liquidity so
- * the most relevant, tradeable results float to the top.
+ * one row per (chain, base-token address), keeping the deepest (most liquid)
+ * pair as the canonical price/identity, then rank by liquidity so the most
+ * relevant, tradeable results float to the top. Pass `chainId` to restrict the
+ * results to a single chain; omit it to search across all supported chains.
  */
-export async function searchTokens(query: string): Promise<TokenSearchResult[]> {
+export async function searchTokens(
+  query: string,
+  chainId?: string
+): Promise<TokenSearchResult[]> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
 
@@ -300,21 +371,27 @@ export async function searchTokens(query: string): Promise<TokenSearchResult[]> 
     return [];
   }
 
+  const wantSlug = chainId ? dexSlugFor(chainId) : null;
   const pairs: any[] = Array.isArray(body?.pairs) ? body.pairs : [];
-  const bestByAddress = new Map<string, any>();
+  // Key by chain + address so the same address on two chains stays distinct.
+  const bestByKey = new Map<string, { pair: any; resolvedChainId: string }>();
   for (const pair of pairs) {
-    if (pair?.chainId !== NETWORK) continue;
+    const resolvedChainId = chainIdFromDexSlug(pair?.chainId);
+    if (!resolvedChainId) continue; // unsupported chain
+    if (wantSlug && pair?.chainId !== wantSlug) continue;
     const address = pair?.baseToken?.address as string | undefined;
     if (!address) continue;
-    const current = bestByAddress.get(address);
-    if (!current || toNumber(pair?.liquidity?.usd) > toNumber(current?.liquidity?.usd)) {
-      bestByAddress.set(address, pair);
+    const key = `${resolvedChainId}:${address}`;
+    const current = bestByKey.get(key);
+    if (!current || toNumber(pair?.liquidity?.usd) > toNumber(current.pair?.liquidity?.usd)) {
+      bestByKey.set(key, { pair, resolvedChainId });
     }
   }
 
-  return [...bestByAddress.values()]
-    .map((pair) => ({
+  return [...bestByKey.values()]
+    .map(({ pair, resolvedChainId }) => ({
       address: pair.baseToken.address as string,
+      chainId: resolvedChainId,
       name: pair.baseToken?.name ?? "",
       symbol: pair.baseToken?.symbol ?? "",
       imageUrl: pair.info?.imageUrl ?? null,
@@ -348,14 +425,18 @@ export interface TokenBrief {
  * Jupiter has not indexed yet.
  */
 export async function fetchTokenBriefs(
-  addresses: string[]
+  addresses: string[],
+  chainId: string = DEFAULT_CHAIN_ID
 ): Promise<Record<string, TokenBrief>> {
   const unique = [...new Set(addresses)].slice(0, 30);
   if (unique.length === 0) return {};
 
+  // Jupiter only indexes Solana; other chains use Dexscreener alone.
   const [jupiterBriefs, dexBriefs] = await Promise.all([
-    fetchJupiterBriefs(unique),
-    fetchDexscreenerBriefs(unique),
+    chainTypeOf(chainId) === "solana"
+      ? fetchJupiterBriefs(unique)
+      : Promise.resolve<Record<string, TokenBrief>>({}),
+    fetchDexscreenerBriefs(unique, chainId),
   ]);
 
   const merged: Record<string, TokenBrief> = {};
@@ -403,8 +484,10 @@ async function fetchJupiterBriefs(
 
 /** Most-liquid-pair metadata per token from Dexscreener (one batch request). */
 async function fetchDexscreenerBriefs(
-  addresses: string[]
+  addresses: string[],
+  chainId: string = DEFAULT_CHAIN_ID
 ): Promise<Record<string, TokenBrief>> {
+  const dexSlug = dexSlugFor(chainId);
   try {
     const res = await fetch(`${DEXSCREENER_BASE}/tokens/${addresses.join(",")}`, {
       cache: "no-store",
@@ -415,7 +498,7 @@ async function fetchDexscreenerBriefs(
 
     const bestByAddress: Record<string, { brief: TokenBrief; liquidity: number }> = {};
     for (const pair of pairs) {
-      if (pair?.chainId !== NETWORK) continue;
+      if (pair?.chainId !== dexSlug) continue;
       const address = pair?.baseToken?.address as string | undefined;
       if (!address) continue;
       const liquidity = toNumber(pair?.liquidity?.usd);
@@ -457,9 +540,12 @@ export function sparkPointsFromPair(pair: MarketPair): number[] {
   );
 }
 
-/** Fetch the most recent individual trades for a pool. */
-export async function fetchTrades(pairAddress: string): Promise<Trade[]> {
-  const url = `${GECKOTERMINAL_BASE}/networks/${NETWORK}/pools/${pairAddress}/trades`;
+/** Fetch the most recent individual trades for a pool on a given chain. */
+export async function fetchTrades(
+  pairAddress: string,
+  chainId: string = DEFAULT_CHAIN_ID
+): Promise<Trade[]> {
+  const url = `${GECKOTERMINAL_BASE}/networks/${geckoSlugFor(chainId)}/pools/${pairAddress}/trades`;
   const res = await fetch(url, {
     cache: "no-store",
     headers: { Accept: "application/json;version=20230302" },

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useWatchlist, type Toast } from "../lib/watchlist";
+import { DEFAULT_CHAIN_ID } from "../lib/chains";
 
 /**
  * Fixed-position stack of in-app toasts, rendered once near the app root.
@@ -19,7 +20,8 @@ export default function ToastHost() {
           toast={toast}
           onDismiss={() => dismissToast(toast.id)}
           onOpen={() => {
-            if (toast.address) navigate(`/token/${toast.address}`);
+            if (toast.address)
+              navigate(`/token/${toast.chainId ?? DEFAULT_CHAIN_ID}/${toast.address}`);
             dismissToast(toast.id);
           }}
         />

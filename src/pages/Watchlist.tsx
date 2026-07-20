@@ -8,6 +8,8 @@ import {
   type TokenBrief,
 } from "../lib/market";
 import { shortenAddress } from "../lib/types";
+import { DEFAULT_CHAIN_ID } from "../lib/chains";
+import type { WatchedToken } from "../lib/watchlist";
 import AlertForm from "../components/watchlist/AlertForm";
 import AlertList from "../components/watchlist/AlertList";
 import TokenCard from "../components/token/TokenCard";
@@ -23,13 +25,24 @@ function loadViewMode(): TokenViewMode {
   return window.localStorage.getItem(VIEW_STORAGE_KEY) === "table" ? "table" : "cards";
 }
 
+/** Chain of a watched token, defaulting to Solana for legacy entries. */
+function chainOf(token: WatchedToken): string {
+  return token.chainId ?? DEFAULT_CHAIN_ID;
+}
+
+/** Stable per-token key, distinct across chains that share an address. */
+function watchKey(chainId: string, address: string): string {
+  return `${chainId}:${address}`;
+}
+
 /** Normalize a watched token + its live data into the shared token-view shape. */
 function toTokenViewItem(
   address: string,
+  chainId: string,
   market: MarketPair | null | undefined,
   brief: TokenBrief | undefined
 ): TokenViewItem {
-  return { address, market, brief };
+  return { address, chainId, market, brief };
 }
 
 export default function Watchlist() {
@@ -41,7 +54,9 @@ export default function Watchlist() {
 
   const [markets, setMarkets] = useState<Record<string, MarketPair | null>>({});
   const [briefs, setBriefs] = useState<Record<string, TokenBrief>>({});
-  const [alertModalAddress, setAlertModalAddress] = useState<string | null>(null);
+  const [alertModalToken, setAlertModalToken] = useState<{ address: string; chainId: string } | null>(
+    null
+  );
   const [viewMode, setViewMode] = useState<TokenViewMode>(loadViewMode);
   const fetchedBriefs = useRef<Set<string>>(new Set());
 
@@ -49,23 +64,40 @@ export default function Watchlist() {
     window.localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
   }, [viewMode]);
 
-  const addresses = useMemo(
-    () => list_of_watched_tokens.map((token) => token.address),
+  // Group watched tokens by chain so each API call uses the right slug.
+  const chainGroups = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const token of list_of_watched_tokens) {
+      const chainId = chainOf(token);
+      const list = groups.get(chainId) ?? [];
+      list.push(token.address);
+      groups.set(chainId, list);
+    }
+    return groups;
+  }, [list_of_watched_tokens]);
+
+  const watchKeyList = useMemo(
+    () => list_of_watched_tokens.map((token) => watchKey(chainOf(token), token.address)).join(","),
     [list_of_watched_tokens]
   );
-  const addressKey = addresses.join(",");
 
-  // Poll live market data for every watched token.
+  // Poll live market data for every watched token, per chain.
   useEffect(() => {
-    if (addresses.length === 0) {
+    if (list_of_watched_tokens.length === 0) {
       setMarkets({});
       return;
     }
     let cancelled = false;
 
     async function loadMarkets() {
-      const map = await fetchMarketPairsResilient(addresses);
-      if (!cancelled) setMarkets(map);
+      const merged: Record<string, MarketPair | null> = {};
+      await Promise.all(
+        [...chainGroups.entries()].map(async ([chainId, addresses]) => {
+          const map = await fetchMarketPairsResilient(addresses, chainId);
+          for (const address of addresses) merged[watchKey(chainId, address)] = map[address] ?? null;
+        })
+      );
+      if (!cancelled) setMarkets(merged);
     }
 
     loadMarkets();
@@ -75,32 +107,40 @@ export default function Watchlist() {
       window.clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressKey]);
+  }, [watchKeyList]);
 
-  // Enrich watched tokens with names / symbols / logos (once per token).
+  // Enrich watched tokens with names / symbols / logos (once per token), per chain.
   useEffect(() => {
-    const pending = addresses.filter((address) => !fetchedBriefs.current.has(address));
-    if (pending.length === 0) return;
     let cancelled = false;
-
     (async () => {
-      for (let i = 0; i < pending.length; i += 30) {
-        const batch = pending.slice(i, i + 30);
-        batch.forEach((address) => fetchedBriefs.current.add(address));
-        const map = await fetchTokenBriefs(batch);
-        if (cancelled) return;
-        setBriefs((prev) => ({ ...prev, ...map }));
+      for (const [chainId, addresses] of chainGroups) {
+        const pending = addresses.filter(
+          (address) => !fetchedBriefs.current.has(watchKey(chainId, address))
+        );
+        for (let i = 0; i < pending.length; i += 30) {
+          const batch = pending.slice(i, i + 30);
+          batch.forEach((address) => fetchedBriefs.current.add(watchKey(chainId, address)));
+          const map = await fetchTokenBriefs(batch, chainId);
+          if (cancelled) return;
+          const keyed: Record<string, TokenBrief> = {};
+          for (const address of batch) {
+            const brief = map[address];
+            if (brief) keyed[watchKey(chainId, address)] = brief;
+          }
+          setBriefs((prev) => ({ ...prev, ...keyed }));
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressKey]);
+  }, [watchKeyList]);
 
   const triggeredCount = list_of_alerts.filter((alert) => alert.triggeredAt !== null).length;
-  const modalMarket = alertModalAddress ? markets[alertModalAddress] : null;
-  const modalBrief = alertModalAddress ? briefs[alertModalAddress] : undefined;
+  const modalKey = alertModalToken ? watchKey(alertModalToken.chainId, alertModalToken.address) : null;
+  const modalMarket = modalKey ? markets[modalKey] : null;
+  const modalBrief = modalKey ? briefs[modalKey] : undefined;
   const modalPrice = modalMarket?.priceUsd ?? null;
   const modalMarketCap = modalMarket?.marketCap ?? null;
   const modalSymbol =
@@ -151,25 +191,41 @@ export default function Watchlist() {
         </div>
       ) : viewMode === "cards" ? (
         <div className="mt-6 grid animate-fade-in gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {list_of_watched_tokens.map((token) => (
-            <TokenCard
-              key={token.address}
-              item={toTokenViewItem(token.address, markets[token.address], briefs[token.address])}
-              footer={
-                <AddAlertButton onAddAlert={() => setAlertModalAddress(token.address)} />
-              }
-            />
-          ))}
+          {list_of_watched_tokens.map((token) => {
+            const chainId = chainOf(token);
+            const key = watchKey(chainId, token.address);
+            return (
+              <TokenCard
+                key={key}
+                item={toTokenViewItem(token.address, chainId, markets[key], briefs[key])}
+                footer={
+                  <AddAlertButton
+                    onAddAlert={() => setAlertModalToken({ address: token.address, chainId })}
+                  />
+                }
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="animate-fade-in">
           <TokenList
-            list_of_items={list_of_watched_tokens.map((token) =>
-              toTokenViewItem(token.address, markets[token.address], briefs[token.address])
-            )}
+            list_of_items={list_of_watched_tokens.map((token) => {
+              const chainId = chainOf(token);
+              const key = watchKey(chainId, token.address);
+              return toTokenViewItem(token.address, chainId, markets[key], briefs[key]);
+            })}
             actionHeader="Alert"
             renderAction={(item) => (
-              <AddAlertButton compact onAddAlert={() => setAlertModalAddress(item.address)} />
+              <AddAlertButton
+                compact
+                onAddAlert={() =>
+                  setAlertModalToken({
+                    address: item.address,
+                    chainId: item.chainId ?? DEFAULT_CHAIN_ID,
+                  })
+                }
+              />
             )}
           />
         </div>
@@ -200,10 +256,10 @@ export default function Watchlist() {
         </div>
       </section>
 
-      {alertModalAddress && (
+      {alertModalToken && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-4 backdrop-blur-sm sm:items-center"
-          onClick={() => setAlertModalAddress(null)}
+          onClick={() => setAlertModalToken(null)}
         >
           <div
             role="dialog"
@@ -230,7 +286,7 @@ export default function Watchlist() {
                   New price alert
                 </p>
                 <h3 className="truncate text-lg font-bold leading-tight text-ink">
-                  {modalSymbol || shortenAddress(alertModalAddress)}
+                  {modalSymbol || shortenAddress(alertModalToken.address)}
                 </h3>
                 {modalName && modalName !== modalSymbol && (
                   <p className="truncate text-xs text-ink-dim">{modalName}</p>
@@ -238,7 +294,7 @@ export default function Watchlist() {
               </div>
               <button
                 type="button"
-                onClick={() => setAlertModalAddress(null)}
+                onClick={() => setAlertModalToken(null)}
                 aria-label="Close"
                 className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-lg text-ink-dim transition hover:bg-bg-soft hover:text-ink"
               >
@@ -250,10 +306,11 @@ export default function Watchlist() {
 
             <div className="p-5">
               <AlertForm
-                address={alertModalAddress}
+                address={alertModalToken.address}
+                chainId={alertModalToken.chainId}
                 currentPrice={modalPrice}
                 currentMarketCap={modalMarketCap}
-                onCreated={() => setAlertModalAddress(null)}
+                onCreated={() => setAlertModalToken(null)}
               />
               <p className="mt-3 flex items-center gap-1.5 text-[11px] text-ink-dim">
                 <BellIcon className="h-3 w-3" />

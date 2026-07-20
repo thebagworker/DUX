@@ -17,6 +17,11 @@ function loadViewMode(): TokenViewMode {
   return window.localStorage.getItem(VIEW_STORAGE_KEY) === "table" ? "table" : "cards";
 }
 
+/** Stable per-token key, distinct across chains that share an address. */
+function profileKey(profile: TokenProfile): string {
+  return `${profile.chainId}:${profile.tokenAddress}`;
+}
+
 /** Normalize a profile + its live data into the shared token-view shape. */
 function toTokenViewItem(
   profile: TokenProfile,
@@ -26,6 +31,7 @@ function toTokenViewItem(
 ): TokenViewItem {
   return {
     address: profile.tokenAddress,
+    chainId: profile.chainId,
     market,
     brief,
     headerImageUrl: profile.header,
@@ -94,11 +100,11 @@ export default function Feed() {
         const changed = new Set<string>();
         if (!first.current) {
           for (const p of data) {
-            if (known.current.get(p.tokenAddress) !== p.updatedAt) changed.add(p.tokenAddress);
+            if (known.current.get(profileKey(p)) !== p.updatedAt) changed.add(profileKey(p));
           }
         }
         first.current = false;
-        known.current = new Map(data.map((p) => [p.tokenAddress, p.updatedAt]));
+        known.current = new Map(data.map((p) => [profileKey(p), p.updatedAt]));
 
         setProfiles(data);
         setLastFetch(new Date());
@@ -128,16 +134,28 @@ export default function Feed() {
   // page of charts resolves in a couple of requests instead of dozens.
   useEffect(() => {
     let cancelled = false;
-    const pending = profiles
-      .map((p) => p.tokenAddress)
-      .filter((addr) => !fetchedMarkets.current.has(addr));
+    const pending = profiles.filter((p) => !fetchedMarkets.current.has(profileKey(p)));
     if (pending.length === 0) return;
 
-    pending.forEach((addr) => fetchedMarkets.current.add(addr));
+    pending.forEach((p) => fetchedMarkets.current.add(profileKey(p)));
     (async () => {
-      const map = await fetchMarketPairs(pending);
-      if (cancelled) return;
-      setMarkets((m) => ({ ...m, ...map }));
+      // Group by chain so each batch hits the right per-provider slug.
+      const byChain = new Map<string, TokenProfile[]>();
+      for (const p of pending) {
+        const list = byChain.get(p.chainId) ?? [];
+        list.push(p);
+        byChain.set(p.chainId, list);
+      }
+      for (const [chainId, group] of byChain) {
+        const map = await fetchMarketPairs(
+          group.map((p) => p.tokenAddress),
+          chainId
+        );
+        if (cancelled) return;
+        const keyed: Record<string, MarketPair | null> = {};
+        for (const p of group) keyed[profileKey(p)] = map[p.tokenAddress] ?? null;
+        setMarkets((m) => ({ ...m, ...keyed }));
+      }
     })();
     return () => {
       cancelled = true;
@@ -148,18 +166,33 @@ export default function Feed() {
   // Powers both the search index and the richer card/table labels.
   useEffect(() => {
     let cancelled = false;
-    const pending = profiles
-      .map((p) => p.tokenAddress)
-      .filter((addr) => !fetchedBriefs.current.has(addr));
+    const pending = profiles.filter((p) => !fetchedBriefs.current.has(profileKey(p)));
     if (pending.length === 0) return;
 
     (async () => {
-      for (let i = 0; i < pending.length; i += 30) {
-        const batch = pending.slice(i, i + 30);
-        batch.forEach((addr) => fetchedBriefs.current.add(addr));
-        const map = await fetchTokenBriefs(batch);
-        if (cancelled) return;
-        setBriefs((prev) => ({ ...prev, ...map }));
+      // Group by chain, then batch each chain (up to 30 addresses per call).
+      const byChain = new Map<string, TokenProfile[]>();
+      for (const p of pending) {
+        const list = byChain.get(p.chainId) ?? [];
+        list.push(p);
+        byChain.set(p.chainId, list);
+      }
+      for (const [chainId, group] of byChain) {
+        for (let i = 0; i < group.length; i += 30) {
+          const batch = group.slice(i, i + 30);
+          batch.forEach((p) => fetchedBriefs.current.add(profileKey(p)));
+          const map = await fetchTokenBriefs(
+            batch.map((p) => p.tokenAddress),
+            chainId
+          );
+          if (cancelled) return;
+          const keyed: Record<string, TokenBrief> = {};
+          for (const p of batch) {
+            const brief = map[p.tokenAddress];
+            if (brief) keyed[profileKey(p)] = brief;
+          }
+          setBriefs((prev) => ({ ...prev, ...keyed }));
+        }
       }
     })();
     return () => {
@@ -170,7 +203,7 @@ export default function Feed() {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return profiles;
-    return profiles.filter((p) => matchesQuery(p, briefs[p.tokenAddress], needle));
+    return profiles.filter((p) => matchesQuery(p, briefs[profileKey(p)], needle));
   }, [profiles, briefs, query]);
 
   return (
@@ -243,12 +276,12 @@ export default function Feed() {
         <div className="mt-5 grid animate-fade-in gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => (
             <TokenCard
-              key={p.tokenAddress}
+              key={profileKey(p)}
               item={toTokenViewItem(
                 p,
-                markets[p.tokenAddress],
-                briefs[p.tokenAddress],
-                fresh.has(p.tokenAddress)
+                markets[profileKey(p)],
+                briefs[profileKey(p)],
+                fresh.has(profileKey(p))
               )}
             />
           ))}
@@ -258,9 +291,9 @@ export default function Feed() {
           list_of_items={filtered.map((p) =>
             toTokenViewItem(
               p,
-              markets[p.tokenAddress],
-              briefs[p.tokenAddress],
-              fresh.has(p.tokenAddress)
+              markets[profileKey(p)],
+              briefs[profileKey(p)],
+              fresh.has(profileKey(p))
             )
           )}
           showProfileColumns

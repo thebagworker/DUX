@@ -8,7 +8,8 @@ import {
   formatUsdCompact,
   type TokenSearchResult,
 } from "../lib/market";
-import { fetchDuxProfileStatuses, type DuxProfileStatus } from "../lib/profiles";
+import { fetchDuxProfileStatuses, tokenRefKey, type DuxProfileStatus } from "../lib/profiles";
+import { DEFAULT_CHAIN_ID, getChain } from "../lib/chains";
 import { relTime, shortenAddress } from "../lib/types";
 import { Spinner } from "./ui/Skeleton";
 
@@ -19,6 +20,7 @@ const MAX_RECENTS = 6;
 /** A token the searcher opened before, remembered so it is one keystroke away. */
 interface RecentToken {
   address: string;
+  chainId: string;
   name: string;
   symbol: string;
   imageUrl: string | null;
@@ -29,7 +31,11 @@ function loadRecents(): RecentToken[] {
   try {
     const raw = window.localStorage.getItem(RECENTS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.slice(0, MAX_RECENTS) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Backfill chainId for recents saved before multi-chain support.
+    return parsed
+      .slice(0, MAX_RECENTS)
+      .map((t) => ({ ...t, chainId: t.chainId ?? DEFAULT_CHAIN_ID }));
   } catch {
     return [];
   }
@@ -37,10 +43,11 @@ function loadRecents(): RecentToken[] {
 
 function rememberRecent(token: RecentToken) {
   if (typeof window === "undefined") return;
-  const next = [token, ...loadRecents().filter((t) => t.address !== token.address)].slice(
-    0,
-    MAX_RECENTS
-  );
+  const key = tokenRefKey(token.chainId, token.address);
+  const next = [
+    token,
+    ...loadRecents().filter((t) => tokenRefKey(t.chainId, t.address) !== key),
+  ].slice(0, MAX_RECENTS);
   window.localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
 }
 
@@ -59,7 +66,7 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TokenSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [duxByAddress, setDuxByAddress] = useState<Record<string, DuxProfileStatus>>({});
+  const [duxByKey, setDuxByKey] = useState<Record<string, DuxProfileStatus>>({});
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents] = useState<RecentToken[]>(loadRecents);
 
@@ -105,12 +112,16 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
 
   // Once results land, ask the DUX API which of them already carry enhanced info.
   useEffect(() => {
-    const pending = results.map((r) => r.address).filter((a) => !duxRequested.current.has(a));
+    const pending = results.filter(
+      (r) => !duxRequested.current.has(tokenRefKey(r.chainId, r.address))
+    );
     if (pending.length === 0) return;
-    pending.forEach((a) => duxRequested.current.add(a));
+    pending.forEach((r) => duxRequested.current.add(tokenRefKey(r.chainId, r.address)));
     (async () => {
-      const map = await fetchDuxProfileStatuses(pending);
-      setDuxByAddress((prev) => ({ ...prev, ...map }));
+      const map = await fetchDuxProfileStatuses(
+        pending.map((r) => ({ chainId: r.chainId, address: r.address }))
+      );
+      setDuxByKey((prev) => ({ ...prev, ...map }));
     })();
   }, [results]);
 
@@ -131,12 +142,13 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
   function openToken(token: TokenSearchResult) {
     rememberRecent({
       address: token.address,
+      chainId: token.chainId,
       name: token.name,
       symbol: token.symbol,
       imageUrl: token.imageUrl,
     });
     onClose();
-    navigate(`/token/${token.address}`);
+    navigate(`/token/${token.chainId}/${token.address}`);
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -226,10 +238,10 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
           ) : (
             items.map((token, index) => (
               <ResultRow
-                key={token.address}
+                key={tokenRefKey(token.chainId, token.address)}
                 index={index}
                 token={token}
-                dux={duxByAddress[token.address]}
+                dux={duxByKey[tokenRefKey(token.chainId, token.address)]}
                 showMarket={searching}
                 active={index === activeIndex}
                 onHover={() => setActiveIndex(index)}
@@ -310,7 +322,10 @@ function ResultRow({
           )}
           <DuxBadge dux={dux} />
         </div>
-        <p className="truncate font-mono text-[11px] text-ink-dim">
+        <p className="flex items-center gap-1.5 truncate font-mono text-[11px] text-ink-dim">
+          <span className="rounded bg-bg-soft px-1 py-0.5 font-sans text-[9px] font-semibold uppercase tracking-wide text-ink-dim">
+            {getChain(token.chainId)?.name ?? token.chainId}
+          </span>
           {shortenAddress(token.address)}
         </p>
       </div>

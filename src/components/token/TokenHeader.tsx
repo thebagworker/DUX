@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { formatPercent, formatPriceUsd } from "../../lib/market";
 import { shortenAddress } from "../../lib/types";
+import { DEFAULT_CHAIN_ID, chainTypeOf, dexscreenerPairUrl, getChain } from "../../lib/chains";
 
 interface TokenHeaderProps {
   address: string;
+  /** Torch chain id the token lives on. */
+  chainId?: string;
   name: string;
   symbol: string;
   imageUrl: string | null;
@@ -16,6 +19,7 @@ interface TokenHeaderProps {
 /** Identity + live price banner at the top of the token dashboard. */
 export default function TokenHeader({
   address,
+  chainId = DEFAULT_CHAIN_ID,
   name,
   symbol,
   imageUrl,
@@ -27,6 +31,8 @@ export default function TokenHeader({
   const [copied, setCopied] = useState(false);
   const up = change24h >= 0;
   const hasBanner = Boolean(bannerUrl);
+  const chainName = getChain(chainId)?.name ?? "Solana";
+  const isSolana = chainTypeOf(chainId) === "solana";
 
   async function copyAddress() {
     try {
@@ -76,7 +82,7 @@ export default function TokenHeader({
               {symbol}
             </h1>
             <span className="rounded-md border border-brand/40 bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand">
-              Solana
+              {chainName}
             </span>
             {dexId && (
               <span
@@ -132,22 +138,35 @@ export default function TokenHeader({
           </span>
         </div>
         <div className="flex flex-col gap-2">
-          <a
-            href={`https://jup.ag/swap/SOL-${address}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-xl bg-up px-5 py-2 text-center text-sm font-bold text-white transition hover:brightness-110"
-          >
-            Buy
-          </a>
-          <a
-            href={`https://jup.ag/swap/${address}-SOL`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-xl bg-down px-5 py-2 text-center text-sm font-bold text-white transition hover:brightness-110"
-          >
-            Sell
-          </a>
+          {isSolana ? (
+            <>
+              <a
+                href={`https://jup.ag/swap/SOL-${address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl bg-up px-5 py-2 text-center text-sm font-bold text-white transition hover:brightness-110"
+              >
+                Buy
+              </a>
+              <a
+                href={`https://jup.ag/swap/${address}-SOL`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl bg-down px-5 py-2 text-center text-sm font-bold text-white transition hover:brightness-110"
+              >
+                Sell
+              </a>
+            </>
+          ) : (
+            <a
+              href={dexscreenerPairUrl(chainId, address)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl bg-brand-strong px-5 py-2 text-center text-sm font-bold text-white transition hover:brightness-110"
+            >
+              Trade ↗
+            </a>
+          )}
         </div>
       </div>
     </div>

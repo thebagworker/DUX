@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChartTheme } from "./PriceChart";
+import { DEFAULT_CHAIN_ID } from "../../lib/chains";
 
 interface EmbedChartDialogProps {
   address: string;
+  chainId?: string;
   symbol?: string;
   onClose: () => void;
 }
@@ -23,12 +25,17 @@ function buildEmbedSnippet(embedUrl: string, symbol: string): string {
  * snippet keeps a fixed aspect ratio and scales to the host container width, and
  * the chosen theme is baked into the embed URL.
  */
-export default function EmbedChartDialog({ address, symbol = "token", onClose }: EmbedChartDialogProps) {
+export default function EmbedChartDialog({
+  address,
+  chainId = DEFAULT_CHAIN_ID,
+  symbol = "token",
+  onClose,
+}: EmbedChartDialogProps) {
   const [theme, setTheme] = useState<ChartTheme>("dark");
   const [copied, setCopied] = useState(false);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const embedUrl = `${origin}/embed/token/${address}?theme=${theme}`;
+  const embedUrl = `${origin}/embed/token/${chainId}/${address}?theme=${theme}`;
   const snippet = useMemo(() => buildEmbedSnippet(embedUrl, symbol), [embedUrl, symbol]);
 
   useEffect(() => {

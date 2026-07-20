@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { fetchMarketPair, formatPercent, formatPriceUsd, type MarketPair } from "../lib/market";
 import { shortenAddress } from "../lib/types";
+import { DEFAULT_CHAIN_ID } from "../lib/chains";
 import PriceChart, { type ChartTheme } from "../components/token/PriceChart";
 import { Spinner } from "../components/ui/Skeleton";
 import { FlameMark } from "../components/Logo";
@@ -21,7 +22,7 @@ const THEME_PALETTE: Record<ChartTheme, { bg: string; surface: string; text: str
  * host site.
  */
 export default function EmbedChart() {
-  const { address = "" } = useParams();
+  const { chainId = DEFAULT_CHAIN_ID, address = "" } = useParams();
   const [searchParams] = useSearchParams();
   const theme: ChartTheme = searchParams.get("theme") === "light" ? "light" : "dark";
   const palette = THEME_PALETTE[theme];
@@ -33,7 +34,7 @@ export default function EmbedChart() {
     let stop = false;
 
     async function loadPrice(initial: boolean) {
-      const p = await fetchMarketPair(address);
+      const p = await fetchMarketPair(address, chainId);
       if (stop) return;
       setPair(p);
       if (initial) setLoading(false);
@@ -45,10 +46,10 @@ export default function EmbedChart() {
       stop = true;
       clearInterval(iv);
     };
-  }, [address]);
+  }, [chainId, address]);
 
   const up = (pair?.priceChange.h24 ?? 0) >= 0;
-  const tokenUrl = `${window.location.origin}/token/${address}`;
+  const tokenUrl = `${window.location.origin}/token/${chainId}/${address}`;
 
   return (
     <div
@@ -110,7 +111,7 @@ export default function EmbedChart() {
 
       {/* edge-to-edge chart */}
       <div className="min-h-0 flex-1" style={{ backgroundColor: palette.surface }}>
-        <PriceChart pairAddress={pair?.pairAddress ?? null} initialTheme={theme} fill />
+        <PriceChart pairAddress={pair?.pairAddress ?? null} chainId={chainId} initialTheme={theme} fill />
       </div>
 
       {/* attribution */}

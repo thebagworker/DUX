@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { Spinner } from "../ui/Skeleton";
+import { DEFAULT_CHAIN_ID, getChain } from "../../lib/chains";
 
 export type ChartTheme = "dark" | "light";
 
 interface PriceChartProps {
   pairAddress: string | null;
+  /** Torch chain id the pair trades on (drives the Dexscreener chain slug). */
+  chainId?: string;
   /** Timeframe/theme the chart opens on. */
   initialTheme?: ChartTheme;
   /**
@@ -27,6 +30,7 @@ interface PriceChartProps {
  */
 export default function PriceChart({
   pairAddress,
+  chainId = DEFAULT_CHAIN_ID,
   initialTheme = "dark",
   fill = false,
   onEmbedClick,
@@ -34,13 +38,15 @@ export default function PriceChart({
   const [theme, setTheme] = useState<ChartTheme>(initialTheme);
   const [loaded, setLoaded] = useState(false);
 
+  const dexSlug = getChain(chainId)?.dexscreenerSlug ?? "solana";
+
   // A fresh iframe load whenever the pair or theme changes.
   useEffect(() => {
     setLoaded(false);
   }, [pairAddress, theme]);
 
   const embedUrl = pairAddress
-    ? `https://dexscreener.com/solana/${pairAddress}?embed=1&theme=${theme}&info=0&trades=0`
+    ? `https://dexscreener.com/${dexSlug}/${pairAddress}?embed=1&theme=${theme}&info=0&trades=0`
     : null;
 
   const chart = (
@@ -106,7 +112,7 @@ export default function PriceChart({
           </div>
           {pairAddress && (
             <a
-              href={`https://dexscreener.com/solana/${pairAddress}`}
+              href={`https://dexscreener.com/${dexSlug}/${pairAddress}`}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-ink-dim transition hover:border-brand hover:text-brand"

@@ -6,6 +6,7 @@ import {
   type PriceAlert,
 } from "../../lib/watchlist";
 import { type TokenBrief } from "../../lib/market";
+import { DEFAULT_CHAIN_ID } from "../../lib/chains";
 import { relTime, shortenAddress } from "../../lib/types";
 
 interface AlertListProps {
@@ -27,7 +28,8 @@ export default function AlertList({ alerts, showToken = false, briefs = {} }: Al
     <ul className="flex flex-col gap-2">
       {alerts.map((alert) => {
         const triggered = alert.triggeredAt !== null;
-        const brief = briefs[alert.address];
+        const chainId = alert.chainId ?? DEFAULT_CHAIN_ID;
+        const brief = briefs[`${chainId}:${alert.address}`] ?? briefs[alert.address];
         const label = brief?.symbol?.trim() || shortenAddress(alert.address);
 
         return (
@@ -39,7 +41,7 @@ export default function AlertList({ alerts, showToken = false, briefs = {} }: Al
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                 {showToken && (
                   <Link
-                    to={`/token/${alert.address}`}
+                    to={`/token/${alert.chainId ?? DEFAULT_CHAIN_ID}/${alert.address}`}
                     className="font-semibold text-ink hover:text-brand"
                   >
                     {label}

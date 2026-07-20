@@ -1,7 +1,10 @@
 import { useWatchlist } from "../lib/watchlist";
+import { DEFAULT_CHAIN_ID } from "../lib/chains";
 
 interface WatchButtonProps {
   address: string;
+  /** Chain the token lives on. Defaults to Solana for legacy call sites. */
+  chainId?: string;
   /** Compact icon-only button (for cards); otherwise shows a label too. */
   compact?: boolean;
   className?: string;
@@ -11,7 +14,12 @@ interface WatchButtonProps {
  * Star toggle that adds/removes a token from the watchlist. Safe to nest inside
  * a router <Link> (it stops the click from bubbling into navigation).
  */
-export default function WatchButton({ address, compact = false, className = "" }: WatchButtonProps) {
+export default function WatchButton({
+  address,
+  chainId = DEFAULT_CHAIN_ID,
+  compact = false,
+  className = "",
+}: WatchButtonProps) {
   const { isWatched, toggleWatchlist } = useWatchlist();
   const watched = isWatched(address);
   const label = watched ? "Remove from watchlist" : "Add to watchlist";
@@ -19,7 +27,7 @@ export default function WatchButton({ address, compact = false, className = "" }
   function handleClick(event: React.MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    toggleWatchlist(address);
+    toggleWatchlist(address, chainId);
   }
 
   if (compact) {

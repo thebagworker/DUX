@@ -14,6 +14,7 @@ import {
   formatUsdCompact,
   type MarketPair,
 } from "./market";
+import { DEFAULT_CHAIN_ID } from "./chains";
 
 /* ---------------------------------------------------------------------------
  * Local-first watchlist + price alerts.
@@ -33,12 +34,16 @@ export type AlertMetric = "price" | "marketCap";
 
 export interface WatchedToken {
   address: string;
+  /** Chain the token lives on. Absent for entries saved before multi-chain. */
+  chainId?: string;
   addedAt: number;
 }
 
 export interface PriceAlert {
   id: string;
   address: string;
+  /** Chain the token lives on. Absent for alerts saved before multi-chain. */
+  chainId?: string;
   metric: AlertMetric;
   direction: AlertDirection;
   targetValue: number;
@@ -70,19 +75,21 @@ export interface Toast {
   body: string;
   tone: ToastTone;
   address: string | null;
+  chainId?: string;
 }
 
 interface WatchlistContextValue {
   list_of_watched_tokens: WatchedToken[];
   watchedCount: number;
   isWatched: (address: string) => boolean;
-  toggleWatchlist: (address: string) => void;
+  toggleWatchlist: (address: string, chainId?: string) => void;
   removeFromWatchlist: (address: string) => void;
 
   list_of_alerts: PriceAlert[];
   alertsForToken: (address: string) => PriceAlert[];
   addAlert: (input: {
     address: string;
+    chainId?: string;
     metric: AlertMetric;
     direction: AlertDirection;
     targetValue: number;
@@ -187,12 +194,12 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     setWatchedTokens((current) => current.filter((token) => token.address !== address));
   }, []);
 
-  const toggleWatchlist = useCallback((address: string) => {
+  const toggleWatchlist = useCallback((address: string, chainId: string = DEFAULT_CHAIN_ID) => {
     setWatchedTokens((current) => {
       if (current.some((token) => token.address === address)) {
         return current.filter((token) => token.address !== address);
       }
-      return [{ address, addedAt: Date.now() }, ...current];
+      return [{ address, chainId, addedAt: Date.now() }, ...current];
     });
   }, []);
 
@@ -206,6 +213,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const addAlert = useCallback(
     (input: {
       address: string;
+      chainId?: string;
       metric: AlertMetric;
       direction: AlertDirection;
       targetValue: number;
@@ -215,6 +223,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         {
           id: makeId(),
           address: input.address,
+          chainId: input.chainId ?? DEFAULT_CHAIN_ID,
           metric: input.metric,
           direction: input.direction,
           targetValue: input.targetValue,
@@ -273,14 +282,31 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
       evaluatingRef.current = true;
       try {
-        const marketByAddress = await fetchMarketPairsResilient([
-          ...new Set(armed.map((alert) => alert.address)),
-        ]);
+        // Alerts can span multiple chains; fetch prices per chain and merge
+        // into one lookup keyed by `${chainId}:${address}`.
+        const byChain = new Map<string, Set<string>>();
+        for (const alert of armed) {
+          const chainId = alert.chainId ?? DEFAULT_CHAIN_ID;
+          const set = byChain.get(chainId) ?? new Set<string>();
+          set.add(alert.address);
+          byChain.set(chainId, set);
+        }
+
+        const marketByKey: Record<string, MarketPair> = {};
+        await Promise.all(
+          [...byChain.entries()].map(async ([chainId, addresses]) => {
+            const map = await fetchMarketPairsResilient([...addresses], chainId);
+            for (const [address, pair] of Object.entries(map)) {
+              if (pair) marketByKey[`${chainId}:${address}`] = pair;
+            }
+          })
+        );
         if (stopped) return;
 
         const firedIds = new Set<string>();
         for (const alert of armed) {
-          const pair = marketByAddress[alert.address];
+          const chainId = alert.chainId ?? DEFAULT_CHAIN_ID;
+          const pair = marketByKey[`${chainId}:${alert.address}`];
           if (!pair) continue;
           const observed = readAlertMetric(pair, alert.metric);
           if (!Number.isFinite(observed) || observed <= 0) continue;
@@ -321,6 +347,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         body,
         tone: alert.direction === "above" ? "up" : "down",
         address: alert.address,
+        chainId: alert.chainId ?? DEFAULT_CHAIN_ID,
       });
 
       if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
@@ -332,7 +359,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
           });
           notification.onclick = () => {
             window.focus();
-            window.location.assign(`/token/${alert.address}`);
+            window.location.assign(`/token/${alert.chainId ?? DEFAULT_CHAIN_ID}/${alert.address}`);
           };
         } catch {
           /* notification construction can throw on some platforms */

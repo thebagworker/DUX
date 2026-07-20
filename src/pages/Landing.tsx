@@ -4,19 +4,35 @@ import RecentTokensMarquee from "../components/RecentTokensMarquee";
 import ContractAddress from "../components/ContractAddress";
 import { FlameMark } from "../components/Logo";
 import { TOKEN_CONTRACT_ADDRESS } from "../lib/config";
+import { DEFAULT_CHAIN_ID, isValidEvmAddress, isValidSolanaAddress } from "../lib/chains";
+import { resolveTokenAcrossChains } from "../lib/market";
 
 export default function Landing() {
   const navigate = useNavigate();
   const [ca, setCa] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
 
-  function go() {
+  async function go() {
     const addr = ca.trim();
-    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr)) {
-      setErr("That does not look like a valid Solana address.");
+    // Solana mints go straight through; EVM (0x…) addresses can live on many
+    // chains, so ask the market resolver which chain actually has the token.
+    if (isValidSolanaAddress(addr)) {
+      navigate(`/token/${DEFAULT_CHAIN_ID}/${addr}`);
       return;
     }
-    navigate(`/token/${addr}`);
+    if (isValidEvmAddress(addr)) {
+      setResolving(true);
+      setErr(null);
+      const { chainId } = await resolveTokenAcrossChains(addr);
+      setResolving(false);
+      // The resolver defaults to Solana when it finds no market; for a 0x
+      // address fall back to Ethereum so the page at least loads the right type.
+      const target = chainId === DEFAULT_CHAIN_ID ? "ethereum" : chainId;
+      navigate(`/token/${target}/${addr}`);
+      return;
+    }
+    setErr("That does not look like a valid Solana or EVM token address.");
   }
 
   return (
@@ -46,16 +62,17 @@ export default function Landing() {
             setErr(null);
           }}
           onKeyDown={(e) => e.key === "Enter" && go()}
-          placeholder="Enter token address (CA)…"
+          placeholder="Enter token address (Solana or EVM)…"
           spellCheck={false}
           autoFocus
           className="flex-1 rounded-xl border border-line bg-bg-soft px-4 py-3.5 font-mono text-[15px] outline-none focus:border-accent"
         />
         <button
           onClick={go}
-          className="rounded-xl bg-brand-strong px-6 py-3.5 font-bold text-white transition hover:brightness-110"
+          disabled={resolving}
+          className="rounded-xl bg-brand-strong px-6 py-3.5 font-bold text-white transition hover:brightness-110 disabled:opacity-60"
         >
-          Open token
+          {resolving ? "Resolving…" : "Open token"}
         </button>
       </div>
       {err && <p className="mt-3 text-danger">{err}</p>}
