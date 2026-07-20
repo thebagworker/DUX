@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   searchTokens,
@@ -163,9 +164,9 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
     active?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 px-4 pt-[12vh] backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-start justify-center bg-ink/40 px-4 pt-[12vh] backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Search tokens"
@@ -250,7 +251,8 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
           </span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
