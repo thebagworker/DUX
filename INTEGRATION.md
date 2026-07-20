@@ -17,7 +17,7 @@ GET <base>/token-profiles/images/{id}
 - CORS: `Access-Control-Allow-Origin: *` (browser-side fetch works).
 - Read endpoints send `Cache-Control: public, max-age=15`.
 
-Machine-readable spec: [`/openapi.json`](https://memipede.vercel.app/openapi.json) (OpenAPI 3.1).
+Machine-readable spec: [`/openapi.json`](https://torch-sable.vercel.app/openapi.json) (OpenAPI 3.1).
 
 ## Quick start
 

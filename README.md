@@ -2,7 +2,7 @@
 
 **Free token info. Burn the paywall.**
 
-**Live:** [memipede.vercel.app](https://memipede.vercel.app)
+**Live:** [torch-sable.vercel.app](https://torch-sable.vercel.app)
 
 Torch is the free, open-source alternative to Dexscreener's **$299** paywall for **Enhanced Token Info** on Solana. Token teams and major holders can publish a banner, description and verified links for their token, authorized purely on-chain, at no cost. The data is served through an open, Dexscreener-compatible API that any trading platform can integrate.
 
