@@ -1,4 +1,4 @@
-project_id = "pwvvexyylkjnujkcjrpu"
+project_id = "rlwblhaxshflftokwduw"
 
 # The read API and the auth/profile endpoints implement their own logic
 # (public reads, single-use nonces, custom scoped JWTs), so the Supabase
