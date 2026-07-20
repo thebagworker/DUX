@@ -237,6 +237,28 @@ export default function TokenPage() {
             <Skeleton className="ml-auto mt-2 h-3.5 w-16 rounded-full" />
           </div>
         </div>
+      ) : bannerPreview ? (
+        <div className="relative flex min-h-[160px] flex-col justify-end overflow-hidden rounded-2xl border border-line p-4 sm:aspect-[3/1] sm:max-h-[200px]">
+          <img
+            src={bannerPreview}
+            alt="token banner"
+            className="absolute inset-0 h-full w-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/55 to-black/30" />
+          <div className="relative flex items-center gap-3.5">
+            <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-2xl border border-white/20 bg-black/30">
+              {profile?.icon ? (
+                <img src={profile.icon} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="font-mono text-lg font-bold text-white/80">SOL</span>
+              )}
+            </div>
+            <div>
+              <h1 className="font-mono text-lg font-semibold text-white">{shortenAddress(address)}</h1>
+              <p className="text-sm text-white/80">No live market found for this token yet.</p>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="flex items-center gap-3.5 rounded-2xl border border-line bg-card p-4">
           <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-2xl border border-line bg-bg-soft">
