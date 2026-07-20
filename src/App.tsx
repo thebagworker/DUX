@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType } from "react";
+import { createPortal } from "react-dom";
 import { Routes, Route, Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./lib/theme";
 import { WatchlistProvider, useWatchlist } from "./lib/watchlist";
@@ -142,37 +143,42 @@ function MobileDrawer() {
         </svg>
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menu">
-          <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-0 flex h-full w-72 max-w-[85%] animate-fade-in flex-col border-r border-line bg-card shadow-2xl shadow-black/25">
-            <div className="flex items-center justify-between border-b border-line px-4 py-4">
-              <Logo />
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close menu"
-                className="grid h-8 w-8 place-items-center rounded-lg text-ink-dim transition hover:bg-bg-soft hover:text-ink"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-              {NAV_ITEMS.map((item) => (
-                <NavRow key={item.to} item={item} onNavigate={() => setOpen(false)} />
-              ))}
-              <GithubRow />
-            </nav>
-            {TOKEN_CONTRACT_ADDRESS && (
-              <div className="border-t border-line p-3">
-                <ContractAddress className="w-full justify-center" />
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Menu">
+            <div
+              className="absolute inset-0 bg-ink/50 backdrop-blur-sm"
+              onClick={() => setOpen(false)}
+            />
+            <div className="absolute left-0 top-0 flex h-full w-72 max-w-[85%] animate-fade-in flex-col border-r border-line bg-card shadow-2xl shadow-black/25">
+              <div className="flex items-center justify-between border-b border-line px-4 py-4">
+                <Logo />
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close menu"
+                  className="grid h-8 w-8 place-items-center rounded-lg text-ink-dim transition hover:bg-bg-soft hover:text-ink"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                  </svg>
+                </button>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+                {NAV_ITEMS.map((item) => (
+                  <NavRow key={item.to} item={item} onNavigate={() => setOpen(false)} />
+                ))}
+                <GithubRow />
+              </nav>
+              {TOKEN_CONTRACT_ADDRESS && (
+                <div className="border-t border-line p-3">
+                  <ContractAddress className="w-full justify-center" />
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
